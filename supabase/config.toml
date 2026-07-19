@@ -217,8 +217,10 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = false
+# Enable the email provider for invited-user magic links. Global
+# `auth.enable_signup = false` and `shouldCreateUser: false` keep registration
+# closed while allowing existing users to sign in.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true

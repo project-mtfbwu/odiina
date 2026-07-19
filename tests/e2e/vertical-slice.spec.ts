@@ -113,7 +113,9 @@ test("@authenticated completes Vertical Slice 1", async ({
   await composer.fill("Offline draft retained by Odiina");
   await context.setOffline(true);
   await page.getByRole("button", { name: "Add to today" }).click();
-  await expect(page.getByRole("alert")).toContainText("offline");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "offline" }),
+  ).toContainText("offline");
   await expect(composer).toHaveValue("Offline draft retained by Odiina");
   await context.setOffline(false);
 
@@ -121,7 +123,7 @@ test("@authenticated completes Vertical Slice 1", async ({
   const revisedBody = "Vertical slice browser Entry — revised";
   await composer.fill(originalBody);
   await composer.press("Control+Enter");
-  await expect(page.getByText(originalBody)).toBeVisible();
+  await expect(page.getByText(originalBody, { exact: true })).toBeVisible();
 
   const parallelReads = await Promise.all(
     Array.from({ length: 4 }, () => page.request.get("/api/feed")),
@@ -138,7 +140,9 @@ test("@authenticated completes Vertical Slice 1", async ({
   await expect(page).toHaveURL(/\/entries\/[0-9a-f-]{36}$/);
   const entryId = page.url().match(/\/entries\/([0-9a-f-]{36})$/)?.[1];
   expect(entryId).toBeTruthy();
-  await expect(page.getByText(originalBody).first()).toBeVisible();
+  await expect(
+    page.getByText(originalBody, { exact: true }).first(),
+  ).toBeVisible();
   await expectNoAxeViolations(page);
 
   await page.getByRole("link", { name: "Edit Entry" }).click();
@@ -147,11 +151,16 @@ test("@authenticated completes Vertical Slice 1", async ({
   await expect(
     page.getByRole("heading", { name: /Revision 2.*Current/ }),
   ).toBeVisible();
-  await expect(page.getByText(originalBody)).toBeVisible();
-  await expect(page.getByText(revisedBody).first()).toBeVisible();
+  await expect(page.getByText(originalBody, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(revisedBody, { exact: true }).first(),
+  ).toBeVisible();
 
   await page.getByRole("link", { name: "Back to Feed" }).click();
-  await expect(page.getByText(revisedBody)).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/feed#entry-${entryId}$`));
+  await expect(
+    page.locator(`#entry-${entryId}`).getByText(revisedBody, { exact: true }),
+  ).toBeVisible();
   await expect(page.locator(`#entry-${entryId}`)).toBeFocused();
   await page.getByRole("button", { name: "Move Entry to Trash" }).click();
   await page.getByRole("button", { name: "Move to Trash" }).click();
@@ -161,13 +170,13 @@ test("@authenticated completes Vertical Slice 1", async ({
 
   await page.getByRole("link", { name: "Trash" }).click();
   await expect(page.getByRole("heading", { name: "Trash" })).toBeVisible();
-  await expect(page.getByText(revisedBody)).toBeVisible();
+  await expect(page.getByText(revisedBody, { exact: true })).toBeVisible();
   await expectNoAxeViolations(page);
   await page.getByRole("button", { name: "Restore Entry" }).click();
   await expect(page.getByText("Trash is empty")).toBeVisible();
 
-  await page.getByRole("link", { name: "Feed" }).click();
-  await expect(page.getByText(revisedBody)).toBeVisible();
+  await page.getByRole("link", { name: "Feed", exact: true }).click();
+  await expect(page.getByText(revisedBody, { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Settings" }).click();
   await expectNoAxeViolations(page);
 
@@ -186,4 +195,7 @@ test("@authenticated completes Vertical Slice 1", async ({
     cookie.name.includes("auth-token"),
   );
   expect(authCookiesAfterLogout).toEqual([]);
+
+  await page.goto("/feed");
+  await expect(page).toHaveURL(/\/login$/);
 });

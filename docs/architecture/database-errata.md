@@ -42,3 +42,20 @@ The original accepted video remains private and immutable.
 
 See [deferred-media-attachments.md](deferred-media-attachments.md) for the
 future extension boundary.
+
+## Purpose-specific function ownership
+
+The baseline migration runs as `postgres`, verifies that runner explicitly,
+and transfers each private `SECURITY DEFINER` function to a purpose-specific
+`NOLOGIN`, `NOINHERIT`, `NOBYPASSRLS` role. For each exact function signature,
+the runner grants itself temporary SET membership and grants the proposed
+owner temporary `CREATE` on `app`, transfers ownership, then revokes both
+privileges immediately. The function owners own no tables and remain subject
+to forced RLS.
+
+Supabase Auth's schema is intentionally not granted to either custom role.
+Odiina uses a security-invoker `app.request_user_id()` equivalent of
+`auth.uid()` that reads the request JWT settings, including PostgREST's JSON
+claims fallback. This removes the ineffective Auth-schema grant that emitted
+`no privileges were granted for "auth"` while keeping identity derived solely
+from the verified request claim.

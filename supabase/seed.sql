@@ -5,7 +5,12 @@ insert into auth.users (
   aud,
   role,
   email,
+  encrypted_password,
   email_confirmed_at,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change,
   raw_app_meta_data,
   raw_user_meta_data,
   created_at,
@@ -17,7 +22,12 @@ values (
   'authenticated',
   'authenticated',
   'ada@example.test',
+  '',
   now(),
+  '',
+  '',
+  '',
+  '',
   '{"provider":"email","providers":["email"]}'::jsonb,
   '{"display_name":"Ada Example"}'::jsonb,
   now(),
@@ -32,7 +42,7 @@ select set_config(
   '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated","email":"ada@example.test"}',
   true
 );
-select app.save_preferences('Asia/Kolkata', 1);
+select app.save_preferences('Asia/Kolkata', 1::smallint);
 select *
 from app.create_entry(
   'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

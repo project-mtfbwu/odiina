@@ -9,7 +9,6 @@ import {
   Modal,
   ModalOverlay,
 } from "react-aria-components";
-import { useRouter } from "next/navigation";
 
 export function TrashEntryButton({
   entryId,
@@ -20,7 +19,6 @@ export function TrashEntryButton({
   csrfToken: string;
   onRemoved?: (entryId: string) => void;
 }) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,7 +36,6 @@ export function TrashEntryButton({
       }
       onRemoved?.(entryId);
       close();
-      router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Try again.");
     } finally {

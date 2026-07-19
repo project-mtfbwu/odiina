@@ -40,7 +40,7 @@ select extensions.is(
         'save_preferences'
       )
       and p.prosecdef
-      and p.proconfig::text like '%search_path=""%'
+      and p.proconfig @> array['search_path=""']::text[]
   ),
   5::bigint,
   'all private mutation functions are SECURITY DEFINER with empty search_path'
@@ -65,20 +65,23 @@ select extensions.is(
 );
 
 insert into auth.users (
-  id, instance_id, aud, role, email, email_confirmed_at,
+  id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
+  confirmation_token, recovery_token, email_change_token_new, email_change,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at
 )
 values
   (
     '22222222-2222-4222-8222-222222222222',
     '00000000-0000-0000-0000-000000000000',
-    'authenticated', 'authenticated', 'owner-a@example.test', now(),
+    'authenticated', 'authenticated', 'owner-a@example.test', '', now(),
+    '', '', '', '',
     '{"provider":"email","providers":["email"]}', '{}', now(), now()
   ),
   (
     '33333333-3333-4333-8333-333333333333',
     '00000000-0000-0000-0000-000000000000',
-    'authenticated', 'authenticated', 'owner-b@example.test', now(),
+    'authenticated', 'authenticated', 'owner-b@example.test', '', now(),
+    '', '', '', '',
     '{"provider":"email","providers":["email"]}', '{}', now(), now()
   )
 on conflict (id) do nothing;
@@ -94,6 +97,8 @@ select set_config('request.jwt.claims', '{"role":"anon"}', true);
 set local role anon;
 select extensions.throws_ok(
   $$select count(*) from app.entries$$,
+  '42501',
+  null,
   'anon cannot access Entries'
 );
 select extensions.throws_ok(
@@ -105,6 +110,8 @@ select extensions.throws_ok(
     '2026-07-19',
     330::smallint
   )$$,
+  '42501',
+  null,
   'anonymous create is rejected'
 );
 
@@ -155,6 +162,8 @@ select extensions.throws_ok(
     '2026-07-19',
     330::smallint
   )$$,
+  'P0001',
+  null,
   'reusing a command identifier with different content is rejected'
 );
 select extensions.is(
@@ -165,19 +174,27 @@ select extensions.is(
 select extensions.throws_ok(
   $$insert into app.entries (user_id)
     values ('33333333-3333-4333-8333-333333333333')$$,
+  '42501',
+  null,
   'authenticated user cannot forge ownership'
 );
 select extensions.throws_ok(
   $$update app.entries
     set user_id = '33333333-3333-4333-8333-333333333333'$$,
+  '42501',
+  null,
   'owner cannot change user_id directly'
 );
 select extensions.throws_ok(
   $$update app.entry_revisions set body_text = 'mutated'$$,
+  '42501',
+  null,
   'revision update is denied'
 );
 select extensions.throws_ok(
   $$delete from app.entry_revisions$$,
+  '42501',
+  null,
   'revision deletion is denied'
 );
 
@@ -262,6 +279,8 @@ select extensions.throws_ok(
     330::smallint,
     'edited'
   )$$,
+  'P0001',
+  null,
   'a second edit from the same expected revision loses with a conflict'
 );
 select extensions.lives_ok(
@@ -311,6 +330,7 @@ select set_config(
   '{"sub":"22222222-2222-4222-8222-222222222222","role":"authenticated"}',
   true
 );
+grant odiina_owner_api to postgres;
 set local role odiina_owner_api;
 select extensions.throws_ok(
   $$update app.entries
@@ -321,7 +341,9 @@ select extensions.throws_ok(
       select entry_id from odiina_test_ids where label = 'a-first'
     );
     set constraints all immediate$$,
-  'current pointer cannot target another Entry revision'
+  'P0001',
+  null,
+  'function owner cannot commit a pointer to another Entry revision'
 );
 select extensions.is(
   (
@@ -330,16 +352,19 @@ select extensions.is(
     where id = (select entry_id from odiina_test_ids where label = 'b-first')
   ),
   0::bigint,
-  'function owner remains constrained by auth.uid RLS'
+  'function owner remains constrained by request-user RLS'
 );
 
 reset role;
+revoke odiina_owner_api from postgres;
 select extensions.throws_ok(
   $$update app.entry_revisions
     set body_text = 'postgres mutation attempt'
     where id = (
       select revision_id from odiina_test_ids where label = 'a-revised'
     )$$,
+  'P0001',
+  null,
   'immutable revision trigger rejects privileged update'
 );
 select extensions.throws_ok(
@@ -347,6 +372,8 @@ select extensions.throws_ok(
     where id = (
       select revision_id from odiina_test_ids where label = 'a-revised'
     )$$,
+  'P0001',
+  null,
   'immutable revision trigger rejects privileged deletion'
 );
 select extensions.throws_ok(
@@ -358,6 +385,8 @@ select extensions.throws_ok(
       select entry_id from odiina_test_ids where label = 'a-first'
     );
     set constraints all immediate$$,
+  '23503',
+  null,
   'current pointer cannot target another owner revision'
 );
 

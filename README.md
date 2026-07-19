@@ -69,13 +69,15 @@ See [vertical-slice-1.md](docs/implementation/vertical-slice-1.md),
 corepack enable
 corepack pnpm install --frozen-lockfile
 corepack pnpm supabase:start
-Copy-Item .env.example .env.local
+corepack pnpm configure:local-env
 corepack pnpm supabase:reset
 corepack pnpm dev
 ```
 
-After `supabase:start`, copy its local API URL and publishable key into
-`.env.local`. Never commit `.env.local`. Local mail is visible at
+`configure:local-env` writes only browser-safe local settings from the running
+stack: the API URL, anon/publishable key, application URL and disabled feature
+flags. It refuses non-loopback URLs and never writes a service-role credential
+or OpenAI variable. Never commit `.env.local`. Local mail is visible at
 `http://127.0.0.1:54324`. `ada@example.test` is a non-login seed placeholder
 with one synthetic Entry.
 
@@ -85,9 +87,9 @@ To retrieve the exact local values:
 corepack pnpm exec supabase status -o env
 ```
 
-Map `API_URL` to `SUPABASE_URL` and `ANON_KEY` to
-`SUPABASE_PUBLISHABLE_KEY` in `.env.local`. The local anon key is suitable for
-this local publishable-key setting; never use `SERVICE_ROLE_KEY`.
+The generator maps `API_URL` to `SUPABASE_URL` and `ANON_KEY` to
+`SUPABASE_PUBLISHABLE_KEY`. The local anon key is suitable for this local
+publishable-key setting; never use `SERVICE_ROLE_KEY`.
 
 Create the login-capable local test identity through the supported Auth admin
 API. Copy the local `SERVICE_ROLE_KEY` printed by the status command into this
@@ -110,8 +112,9 @@ corepack pnpm dev
 ## Environment and privacy
 
 Only `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `ODIINA_APP_URL`, the local
-rate-limit adapter and disabled flags are active. OpenAI variables are inactive
-server-only placeholders and must never receive a `NEXT_PUBLIC_` prefix.
+rate-limit adapter and disabled flags are active. OpenAI variables in the
+example file are future server-only placeholders and are not copied into the
+generated local environment. They must never receive a `NEXT_PUBLIC_` prefix.
 
 The in-memory rate limiter is single-process and local-only. Replace it with a
 shared privacy-safe adapter before any public beta. Do not use real personal

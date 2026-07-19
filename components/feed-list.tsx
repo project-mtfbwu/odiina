@@ -86,6 +86,12 @@ export function FeedList({
     return () => observer.disconnect();
   }, [cursor, loadMore]);
 
+  useEffect(() => {
+    if (recentlyTrashed) {
+      document.getElementById("feed-list-heading")?.focus();
+    }
+  }, [recentlyTrashed]);
+
   if (entries.length === 0 && !recentlyTrashed) {
     return (
       <StatusCard title="Your Feed is ready">
@@ -131,9 +137,6 @@ export function FeedList({
               setEntries((current) =>
                 current.filter((item) => item.entry_id !== entryId),
               );
-              window.requestAnimationFrame(() => {
-                document.getElementById("feed-list-heading")?.focus();
-              });
             }}
           />
         ))}

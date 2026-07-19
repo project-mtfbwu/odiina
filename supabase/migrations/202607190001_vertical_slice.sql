@@ -15,9 +15,19 @@ begin
 end
 $$;
 
+do $$
+begin
+  if current_user <> 'postgres' then
+    raise exception using
+      errcode = '42501',
+      message = 'odiina_migration_requires_postgres_runner';
+  end if;
+end
+$$;
+
 revoke all on schema app from public, anon;
 grant usage on schema app to authenticated, service_role, odiina_owner_api, odiina_provisioner;
-grant usage on schema auth, extensions to odiina_owner_api;
+grant usage on schema extensions to odiina_owner_api;
 
 create table app.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -136,6 +146,7 @@ begin
   return new;
 end
 $$;
+revoke all on function app.set_updated_at() from public, anon;
 
 create trigger profiles_set_updated_at
 before update on app.profiles
@@ -159,6 +170,7 @@ begin
   raise exception using errcode = 'P0001', message = 'odiina_revision_immutable';
 end
 $$;
+revoke all on function app.reject_revision_mutation() from public, anon;
 
 create trigger entry_revisions_are_immutable
 before update or delete on app.entry_revisions
@@ -183,11 +195,34 @@ begin
   return null;
 end
 $$;
+revoke all on function app.require_committed_current_revision() from public, anon;
 
 create constraint trigger entries_require_current_revision
 after insert or update of current_revision_id on app.entries
 deferrable initially deferred
 for each row execute function app.require_committed_current_revision();
+
+-- Supabase auth.uid() reads this same request-scoped claim. Keeping the
+-- equivalent security-invoker helper in app avoids granting custom function
+-- owners access to the protected auth schema.
+create function app.request_user_id()
+returns uuid
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select coalesce(
+    nullif(pg_catalog.current_setting('request.jwt.claim.sub', true), ''),
+    nullif(
+      pg_catalog.current_setting('request.jwt.claims', true),
+      ''
+    )::jsonb ->> 'sub'
+  )::uuid
+$$;
+revoke all on function app.request_user_id() from public, anon;
+grant execute on function app.request_user_id()
+  to authenticated, odiina_owner_api;
 
 alter table app.profiles enable row level security;
 alter table app.profiles force row level security;
@@ -202,33 +237,33 @@ alter table app.entry_command_receipts force row level security;
 
 create policy profiles_owner_read on app.profiles
 for select to authenticated
-using (user_id = (select auth.uid()));
+using (user_id = (select app.request_user_id()));
 create policy preferences_owner_read on app.user_preferences
 for select to authenticated
-using (user_id = (select auth.uid()));
+using (user_id = (select app.request_user_id()));
 create policy entries_owner_read on app.entries
 for select to authenticated
-using (user_id = (select auth.uid()));
+using (user_id = (select app.request_user_id()));
 create policy revisions_owner_read on app.entry_revisions
 for select to authenticated
-using (user_id = (select auth.uid()));
+using (user_id = (select app.request_user_id()));
 
 create policy preferences_function_owner on app.user_preferences
 for all to odiina_owner_api
-using (user_id = (select auth.uid()))
-with check (user_id = (select auth.uid()));
+using (user_id = (select app.request_user_id()))
+with check (user_id = (select app.request_user_id()));
 create policy entries_function_owner on app.entries
 for all to odiina_owner_api
-using (user_id = (select auth.uid()))
-with check (user_id = (select auth.uid()));
+using (user_id = (select app.request_user_id()))
+with check (user_id = (select app.request_user_id()));
 create policy revisions_function_owner on app.entry_revisions
 for all to odiina_owner_api
-using (user_id = (select auth.uid()))
-with check (user_id = (select auth.uid()));
+using (user_id = (select app.request_user_id()))
+with check (user_id = (select app.request_user_id()));
 create policy receipts_function_owner on app.entry_command_receipts
 for all to odiina_owner_api
-using (user_id = (select auth.uid()))
-with check (user_id = (select auth.uid()));
+using (user_id = (select app.request_user_id()))
+with check (user_id = (select app.request_user_id()));
 
 create policy profiles_provision_insert on app.profiles
 for insert to odiina_provisioner
@@ -259,12 +294,17 @@ begin
   return new;
 end
 $$;
-alter function app.provision_account() owner to odiina_provisioner;
 revoke all on function app.provision_account() from public, anon, authenticated;
 
 create trigger provision_odiina_account
 after insert on auth.users
 for each row execute function app.provision_account();
+
+grant odiina_provisioner to postgres;
+grant create on schema app to odiina_provisioner;
+alter function app.provision_account() owner to odiina_provisioner;
+revoke create on schema app from odiina_provisioner;
+revoke odiina_provisioner from postgres;
 
 create function app.assert_occurrence(
   p_occurred_at timestamptz,
@@ -322,7 +362,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor uuid := auth.uid();
+  actor uuid := app.request_user_id();
   normalized_body text := btrim(p_body_text);
   canonical_hash bytea;
   receipt app.entry_command_receipts%rowtype;
@@ -429,8 +469,16 @@ begin
   return query select created_entry_id, created_revision_id;
 end
 $$;
+revoke all on function app.create_entry(uuid, text, timestamptz, text, date, smallint)
+  from public, anon;
+grant execute on function app.create_entry(uuid, text, timestamptz, text, date, smallint)
+  to authenticated;
+grant odiina_owner_api to postgres;
+grant create on schema app to odiina_owner_api;
 alter function app.create_entry(uuid, text, timestamptz, text, date, smallint)
   owner to odiina_owner_api;
+revoke create on schema app from odiina_owner_api;
+revoke odiina_owner_api from postgres;
 
 create function app.revise_entry(
   p_entry_id uuid,
@@ -448,7 +496,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor uuid := auth.uid();
+  actor uuid := app.request_user_id();
   normalized_body text := btrim(p_body_text);
   locked_entry app.entries%rowtype;
   next_revision integer;
@@ -520,8 +568,16 @@ begin
   return query select p_entry_id, created_revision_id;
 end
 $$;
+revoke all on function app.revise_entry(uuid, uuid, text, timestamptz, text, date, smallint, text)
+  from public, anon;
+grant execute on function app.revise_entry(uuid, uuid, text, timestamptz, text, date, smallint, text)
+  to authenticated;
+grant odiina_owner_api to postgres;
+grant create on schema app to odiina_owner_api;
 alter function app.revise_entry(uuid, uuid, text, timestamptz, text, date, smallint, text)
   owner to odiina_owner_api;
+revoke create on schema app from odiina_owner_api;
+revoke odiina_owner_api from postgres;
 
 create function app.trash_entry(p_entry_id uuid)
 returns void
@@ -530,7 +586,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor uuid := auth.uid();
+  actor uuid := app.request_user_id();
 begin
   if actor is null then
     raise exception using errcode = 'P0001', message = 'odiina_auth_required';
@@ -547,7 +603,13 @@ begin
   end if;
 end
 $$;
+revoke all on function app.trash_entry(uuid) from public, anon;
+grant execute on function app.trash_entry(uuid) to authenticated;
+grant odiina_owner_api to postgres;
+grant create on schema app to odiina_owner_api;
 alter function app.trash_entry(uuid) owner to odiina_owner_api;
+revoke create on schema app from odiina_owner_api;
+revoke odiina_owner_api from postgres;
 
 create function app.restore_entry(p_entry_id uuid)
 returns void
@@ -556,7 +618,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor uuid := auth.uid();
+  actor uuid := app.request_user_id();
 begin
   if actor is null then
     raise exception using errcode = 'P0001', message = 'odiina_auth_required';
@@ -574,7 +636,13 @@ begin
   end if;
 end
 $$;
+revoke all on function app.restore_entry(uuid) from public, anon;
+grant execute on function app.restore_entry(uuid) to authenticated;
+grant odiina_owner_api to postgres;
+grant create on schema app to odiina_owner_api;
 alter function app.restore_entry(uuid) owner to odiina_owner_api;
+revoke create on schema app from odiina_owner_api;
+revoke odiina_owner_api from postgres;
 
 create function app.save_preferences(
   p_iana_timezone text,
@@ -586,7 +654,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor uuid := auth.uid();
+  actor uuid := app.request_user_id();
 begin
   if actor is null then
     raise exception using errcode = 'P0001', message = 'odiina_auth_required';
@@ -608,7 +676,13 @@ begin
   end if;
 end
 $$;
+revoke all on function app.save_preferences(text, smallint) from public, anon;
+grant execute on function app.save_preferences(text, smallint) to authenticated;
+grant odiina_owner_api to postgres;
+grant create on schema app to odiina_owner_api;
 alter function app.save_preferences(text, smallint) owner to odiina_owner_api;
+revoke create on schema app from odiina_owner_api;
+revoke odiina_owner_api from postgres;
 
 create function app.feed_page(
   p_cursor_occurred_at timestamptz default null,
@@ -646,7 +720,7 @@ as $$
     on r.user_id = e.user_id
     and r.entry_id = e.id
     and r.id = e.current_revision_id
-  where e.user_id = auth.uid()
+  where e.user_id = app.request_user_id()
     and e.lifecycle_state = case when p_include_trash then 'trashed' else 'active' end
     and (
       p_cursor_occurred_at is null
@@ -656,16 +730,12 @@ as $$
   limit least(greatest(coalesce(p_limit, 24), 1), 50)
 $$;
 
-revoke all on all functions in schema app from public, anon;
+revoke all on function app.assert_occurrence(timestamptz, text, date, smallint)
+  from public, anon;
+revoke all on function app.feed_page(timestamptz, uuid, integer, boolean)
+  from public, anon;
 grant execute on function app.assert_occurrence(timestamptz, text, date, smallint)
   to odiina_owner_api;
-grant execute on function app.create_entry(uuid, text, timestamptz, text, date, smallint)
-  to authenticated;
-grant execute on function app.revise_entry(uuid, uuid, text, timestamptz, text, date, smallint, text)
-  to authenticated;
-grant execute on function app.trash_entry(uuid) to authenticated;
-grant execute on function app.restore_entry(uuid) to authenticated;
-grant execute on function app.save_preferences(text, smallint) to authenticated;
 grant execute on function app.feed_page(timestamptz, uuid, integer, boolean)
   to authenticated;
 
@@ -677,5 +747,7 @@ comment on column app.entry_revisions.body_text is
   'May be empty in future attachment-backed entries; current text-only RPCs require 1..100000 trimmed characters. Future attachments use a general media abstraction, not an image-only invariant.';
 comment on table app.entry_revisions is
   'Vertical slice 1 stores text revisions only. Reserved future media kinds image, video, and audio are not accepted by this migration or any current route.';
+comment on function app.request_user_id() is
+  'Security-invoker equivalent of Supabase auth.uid(), including PostgREST JWT-claims fallback, scoped to app so custom function owners need no auth-schema privileges.';
 
 commit;
