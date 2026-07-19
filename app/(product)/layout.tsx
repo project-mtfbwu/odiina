@@ -1,0 +1,38 @@
+import { cookies } from "next/headers";
+
+import { Navigation } from "@/components/navigation";
+import { OfflineNotice } from "@/components/offline-notice";
+import { csrfCookieName } from "@/lib/auth/cookie-options";
+import { requireVerifiedUser } from "@/lib/auth/user";
+
+export const dynamic = "force-dynamic";
+
+export default async function ProductLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const user = await requireVerifiedUser();
+  const csrf = (await cookies()).get(csrfCookieName)?.value ?? "";
+
+  return (
+    <>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+      <OfflineNotice />
+      <div className="app-grid">
+        <Navigation email={user.email} />
+        <main className="app-main" id="main-content" tabIndex={-1}>
+          <input
+            type="hidden"
+            name="odiina-csrf-context"
+            value={csrf}
+            readOnly
+          />
+          {children}
+        </main>
+      </div>
+    </>
+  );
+}

@@ -1,0 +1,82 @@
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm audit --audit-level moderate
+      - run: pnpm build
+      - run: pnpm scan:client
+
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: supabase start
+      - run: supabase db reset --local
+      - run: supabase test db
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+      - run: supabase start
+      - run: supabase db reset --local
+      - name: Export local application environment
+        shell: bash
+        run: |
+          supabase status -o env > .supabase-status.env
+          source .supabase-status.env
+          echo "SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+          echo "ODIINA_E2E_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "ODIINA_APP_URL=http://localhost:3000" >> "$GITHUB_ENV"
+          echo "ODIINA_E2E=1" >> "$GITHUB_ENV"
+          echo "ODIINA_MAILBOX_URL=http://127.0.0.1:54324" >> "$GITHUB_ENV"
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm seed:e2e-user
+      - run: pnpm test:e2e
+      - run: pnpm test:a11y
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2

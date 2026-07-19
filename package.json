@@ -1,0 +1,61 @@
+{
+  "name": "odiina",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.15.0",
+  "engines": {
+    "node": ">=24.16.0 <25"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "supabase test db",
+    "test:e2e": "playwright test",
+    "test:e2e:authenticated": "corepack pnpm seed:e2e-user && playwright test --project=authenticated-desktop",
+    "test:a11y": "playwright test --grep @a11y",
+    "scan:client": "node scripts/scan-client-output.mjs",
+    "seed:e2e-user": "node --env-file-if-exists=.env.local scripts/create-local-test-user.mjs",
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset --local",
+    "supabase:stop": "supabase stop",
+    "check": "corepack pnpm format:check && corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test && corepack pnpm build && corepack pnpm scan:client"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.12.3",
+    "@supabase/supabase-js": "2.110.7",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-aria-components": "1.19.0",
+    "react-dom": "19.2.7",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.61.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.1",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "eslint": "9.39.2",
+    "eslint-config-next": "16.2.10",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "jsdom": "29.1.1",
+    "prettier": "3.9.5",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "supabase": "2.109.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

@@ -1,0 +1,49 @@
+import { NextResponse, type NextRequest } from "next/server";
+
+import { verifiedRequestClient } from "@/lib/auth/request-user";
+import { feedPageSize } from "@/lib/database/queries";
+import { decodeFeedCursor, encodeFeedCursor } from "@/lib/database/cursor";
+import type { FeedEntry } from "@/lib/database/types";
+import { configurationUnavailableResponse } from "@/lib/security/http-responses";
+
+export async function GET(request: NextRequest) {
+  const unavailable = configurationUnavailableResponse();
+  if (unavailable) return unavailable;
+  const context = await verifiedRequestClient(request);
+  if (!context.userId) {
+    return context.applyAuthState(
+      NextResponse.json({ error: "authentication_required" }, { status: 401 }),
+    );
+  }
+
+  const cursor = decodeFeedCursor(request.nextUrl.searchParams.get("cursor"));
+  const { data, error } = await context.supabase
+    .schema("app")
+    .rpc("feed_page", {
+      p_cursor_entry_id: cursor?.entryId ?? null,
+      p_cursor_occurred_at: cursor?.occurredAt ?? null,
+      p_include_trash: false,
+      p_limit: feedPageSize,
+    });
+
+  if (error) {
+    return context.applyAuthState(
+      NextResponse.json({ error: "feed_unavailable" }, { status: 503 }),
+    );
+  }
+
+  const entries = (data ?? []) as FeedEntry[];
+  const last = entries.at(-1);
+  return context.applyAuthState(
+    NextResponse.json({
+      entries,
+      nextCursor:
+        entries.length === feedPageSize && last
+          ? encodeFeedCursor({
+              entryId: last.entry_id,
+              occurredAt: last.occurred_at,
+            })
+          : null,
+    }),
+  );
+}
