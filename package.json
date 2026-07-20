@@ -19,6 +19,7 @@
     "test:db": "supabase test db",
     "test:e2e": "playwright test",
     "test:e2e:authenticated": "corepack pnpm seed:e2e-user && playwright test --project=authenticated-desktop",
+    "test:e2e:certify-mobile": "playwright test --project=authenticated-mobile --workers=1",
     "test:a11y": "playwright test --grep @a11y",
     "scan:client": "node scripts/scan-client-output.mjs",
     "configure:local-env": "supabase status -o json | node scripts/configure-local-env.mjs",

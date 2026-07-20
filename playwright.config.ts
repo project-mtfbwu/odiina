@@ -1,5 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
+const useProductionServer = process.env.ODIINA_E2E_SERVER_MODE === "production";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
@@ -11,9 +13,9 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "corepack pnpm dev",
+    command: useProductionServer ? "corepack pnpm start" : "corepack pnpm dev",
     url: "http://localhost:3000/login",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !useProductionServer && !process.env.CI,
     timeout: 120_000,
   },
   projects: [
