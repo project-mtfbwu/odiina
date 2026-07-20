@@ -45,9 +45,10 @@ export default async function SettingsPage() {
           Private-beta data status
         </h2>
         <p className="leading-7 text-[var(--muted)]">
-          AI, image, video and audio uploads, sharing, workers and period
-          reports are disabled. Odiina does not call OpenAI or use third-party
-          analytics in this slice.
+          Private image capture and its safety worker are enabled. AI, voice,
+          video, location, sharing and period reports remain gated behind their
+          mandatory MVP stages. Odiina does not call OpenAI or use third-party
+          analytics in this increment.
         </p>
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
           {Object.entries(featureFlags).map(([name, enabled]) => (

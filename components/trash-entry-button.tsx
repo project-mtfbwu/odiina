@@ -49,7 +49,7 @@ export function TrashEntryButton({
         Trash
       </Button>
       <ModalOverlay className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 backdrop-blur-[2px]">
-        <Modal className="w-full max-w-md rounded-[1.15rem] bg-white p-6 shadow-2xl">
+        <Modal className="w-full max-w-md rounded-[1.15rem] bg-[var(--surface)] p-6 text-[var(--ink)] shadow-2xl">
           <Dialog className="outline-none">
             {({ close }) => (
               <>

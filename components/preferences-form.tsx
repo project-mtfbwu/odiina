@@ -69,7 +69,7 @@ export function PreferencesForm({
   return (
     <div className="grid gap-5">
       {suggestion && suggestion !== timezone ? (
-        <div className="rounded-xl bg-[var(--accent-soft)] p-4 text-sm leading-6 text-[#3e327e]">
+        <div className="rounded-xl bg-[var(--accent-soft)] p-4 text-sm leading-6 text-[#d8ceff]">
           Your browser suggests <strong>{suggestion}</strong>. Confirm it rather
           than assuming it is correct.{" "}
           <Button

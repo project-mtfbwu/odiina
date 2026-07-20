@@ -191,7 +191,7 @@ export function EntryEditor({
       ) : null}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs text-[var(--muted)]">
-          {remaining.toLocaleString()} characters left
+          {remaining.toLocaleString("en")} characters left
         </span>
         <div className="flex gap-2">
           <Button

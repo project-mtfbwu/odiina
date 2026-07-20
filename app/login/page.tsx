@@ -44,7 +44,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </section>
 
         <section
-          className="rounded-[1.4rem] bg-white p-6 shadow-2xl shadow-black/25 sm:p-9"
+          className="rounded-[1.4rem] bg-[var(--surface)] p-6 text-[var(--ink)] shadow-2xl shadow-black/25 sm:p-9"
           aria-labelledby="login-heading"
         >
           <p className="eyebrow">Welcome back</p>
@@ -60,13 +60,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
 
           {status === "check-email" ? (
-            <div className="mb-6 rounded-xl bg-[var(--accent-soft)] p-4 text-sm leading-6 text-[#3e327e]">
+            <div className="mb-6 rounded-xl bg-[var(--accent-soft)] p-4 text-sm leading-6 text-[#d8ceff]">
               If the address is eligible, a sign-in link is on its way. The
               response is intentionally the same for every address.
             </div>
           ) : null}
           {status === "logged-out" ? (
-            <div className="mb-6 rounded-xl bg-[#eaf5ef] p-4 text-sm text-[#255846]">
+            <div className="mb-6 rounded-xl bg-[#163228] p-4 text-sm text-[#a7e6ca]">
               You have been signed out of Odiina.
             </div>
           ) : null}

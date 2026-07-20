@@ -1,84 +1,174 @@
-import Link from "next/link";
+"use client";
 
-const primaryItems = [
-  { href: "/feed", label: "Feed", marker: "F" },
-  { href: "/trash", label: "Trash", marker: "T" },
-  { href: "/settings", label: "Settings", marker: "S" },
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import {
+  CalendarIcon,
+  FeedIcon,
+  PlusIcon,
+  ProfileIcon,
+  SettingsIcon,
+  TrashIcon,
+} from "@/components/icons";
+
+function initials(displayName: string): string {
+  return displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+const activeItems = [
+  { href: "/feed", label: "Feed", icon: FeedIcon },
+  { href: "/trash", label: "Trash", icon: TrashIcon },
+  { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-export function Navigation({ email }: { email: string | null }) {
+const stagedItems = [
+  { label: "Calendar", stage: "B", icon: CalendarIcon },
+  { label: "Profile", stage: "C", icon: ProfileIcon },
+];
+
+export function Navigation({
+  csrfToken,
+  displayName,
+  email,
+}: {
+  csrfToken: string;
+  displayName: string;
+  email: string | null;
+}) {
+  const pathname = usePathname();
+  const avatarInitials = initials(displayName) || "O";
+
   return (
     <>
-      <aside className="hidden min-h-dvh bg-[var(--rail)] text-white md:sticky md:top-0 md:flex md:h-dvh md:flex-col">
-        <div className="px-5 pt-7 pb-6">
+      <header className="mobile-app-header md:hidden">
+        <Link href="/feed" className="mobile-wordmark" aria-label="Odiina Feed">
+          Odiina
+        </Link>
+        <div className="flex items-center gap-2">
+          <span className="private-badge">Private timeline</span>
           <Link
-            href="/feed"
-            className="inline-flex min-h-11 items-center text-xl font-black tracking-[-0.04em]"
-            aria-label="Odiina Feed"
+            href="/trash"
+            className="composer-icon-button"
+            aria-label="Trash"
           >
+            <TrashIcon className="size-5" />
+          </Link>
+        </div>
+      </header>
+
+      <aside className="desktop-rail">
+        <div className="rail-brand">
+          <Link href="/feed" className="rail-wordmark" aria-label="Odiina Feed">
             Odiina
           </Link>
-          <p className="mt-1 text-xs font-semibold tracking-[0.12em] text-[var(--rail-muted)] uppercase">
-            Private feed
-          </p>
+          <p>Raw life, kept private.</p>
         </div>
-        <nav aria-label="Primary" className="px-3">
-          <ul className="m-0 grid list-none gap-1 p-0">
-            {primaryItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="group flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[#d8dae0] transition-colors hover:bg-white/8 hover:text-white"
-                >
-                  <span
-                    className="grid h-7 w-7 place-items-center rounded-lg bg-white/8 text-xs text-[#b8aef5] group-hover:bg-white/12"
-                    aria-hidden="true"
+
+        <div className="rail-profile">
+          <div className="avatar avatar-medium" aria-hidden="true">
+            {avatarInitials}
+          </div>
+          <div className="min-w-0">
+            <p className="rail-profile-name">{displayName}</p>
+            <p className="rail-profile-email">{email ?? "Signed in"}</p>
+          </div>
+        </div>
+
+        <nav aria-label="Primary" className="rail-navigation">
+          <ul>
+            {activeItems.map((item) => {
+              const Icon = item.icon;
+              const active =
+                pathname === item.href ||
+                (item.href === "/feed" && pathname.startsWith("/entries/"));
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className="rail-nav-item"
+                    data-active={active || undefined}
+                    aria-current={active ? "page" : undefined}
                   >
-                    {item.marker}
-                  </span>
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+                    <Icon className="size-5" />
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
-          <div className="mt-7 border-t border-white/10 px-3 pt-5">
-            <p className="mb-2 text-[0.68rem] font-bold tracking-[0.14em] text-[#7f8592] uppercase">
-              Later
-            </p>
-            <p className="m-0 py-2 text-sm text-[#777d89]" aria-disabled="true">
-              Interpretations
-            </p>
-            <p className="m-0 py-2 text-sm text-[#777d89]" aria-disabled="true">
-              Reviews
-            </p>
+
+          <div className="rail-stage">
+            <p className="rail-section-label">Next MVP increments</p>
+            {stagedItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  className="rail-nav-item rail-nav-staged"
+                  aria-disabled="true"
+                  key={item.label}
+                >
+                  <Icon className="size-5" />
+                  <span>{item.label}</span>
+                  <span className="stage-badge">Stage {item.stage}</span>
+                </div>
+              );
+            })}
           </div>
         </nav>
-        <div className="mt-auto border-t border-white/10 px-5 py-5">
-          <p className="m-0 truncate text-xs text-[var(--rail-muted)]">
-            {email ?? "Signed in"}
-          </p>
+
+        <div className="rail-footer">
+          <a className="capture-shortcut" href="#capture-heading">
+            <PlusIcon className="size-5" />
+            Capture
+          </a>
+          <form action="/auth/logout" method="post">
+            <input type="hidden" name="csrf" value={csrfToken} />
+            <button className="rail-logout" type="submit">
+              Log out
+            </button>
+          </form>
         </div>
       </aside>
 
-      <nav
-        aria-label="Mobile primary"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-white/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden"
-      >
-        <ul className="m-0 grid list-none grid-cols-3 gap-1 p-0">
-          {primaryItems.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-bold text-[var(--muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--ink)]"
-              >
-                <span aria-hidden="true" className="text-sm">
-                  {item.marker}
-                </span>
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+      <nav aria-label="Mobile primary" className="mobile-navigation md:hidden">
+        <Link
+          href="/feed"
+          className="mobile-nav-item"
+          data-active={pathname === "/feed" || undefined}
+          aria-current={pathname === "/feed" ? "page" : undefined}
+        >
+          <FeedIcon className="size-5" />
+          Feed
+        </Link>
+        <span className="mobile-nav-item" aria-disabled="true">
+          <CalendarIcon className="size-5" />
+          Calendar
+          <span className="sr-only">available in MVP stage B</span>
+        </span>
+        <a className="mobile-capture-button" href="#capture-heading">
+          <PlusIcon className="size-6" />
+          <span className="sr-only">Jump to capture composer</span>
+        </a>
+        <span className="mobile-nav-item" aria-disabled="true">
+          <ProfileIcon className="size-5" />
+          Profile
+          <span className="sr-only">available in MVP stage C</span>
+        </span>
+        <Link
+          href="/settings"
+          className="mobile-nav-item"
+          data-active={pathname === "/settings" || undefined}
+          aria-current={pathname === "/settings" ? "page" : undefined}
+        >
+          <SettingsIcon className="size-5" />
+          Settings
+        </Link>
       </nav>
     </>
   );

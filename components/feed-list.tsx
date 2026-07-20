@@ -8,15 +8,20 @@ import { FragmentFocusRestorer } from "@/components/fragment-focus-restorer";
 import { RestoreEntryButton } from "@/components/restore-entry-button";
 import { StatusCard } from "@/components/status-card";
 import type { FeedEntry } from "@/lib/database/types";
+import { groupFeedEntries } from "@/lib/feed/grouping";
 
 export function FeedList({
   initialEntries,
   initialCursor,
   csrfToken,
+  displayName,
+  todayLocal,
 }: {
   initialEntries: FeedEntry[];
   initialCursor: string | null;
   csrfToken: string;
+  displayName: string;
+  todayLocal: string;
 }) {
   const [entries, setEntries] = useState(initialEntries);
   const [cursor, setCursor] = useState(initialCursor);
@@ -24,6 +29,7 @@ export function FeedList({
   const [error, setError] = useState<string | null>(null);
   const [recentlyTrashed, setRecentlyTrashed] = useState<string | null>(null);
   const sentinel = useRef<HTMLDivElement>(null);
+  const groups = groupFeedEntries(entries, todayLocal);
 
   const loadMore = useCallback(
     async (automatic = false) => {
@@ -126,19 +132,33 @@ export function FeedList({
         </h2>
         <span className="text-xs text-[var(--muted)]">Newest first</span>
       </div>
-      <div className="grid gap-3">
-        {entries.map((entry) => (
-          <EntryCard
-            key={entry.entry_id}
-            entry={entry}
-            csrfToken={csrfToken}
-            onRemoved={(entryId) => {
-              setRecentlyTrashed(entryId);
-              setEntries((current) =>
-                current.filter((item) => item.entry_id !== entryId),
-              );
-            }}
-          />
+      <div className="feed-stream">
+        {groups.map((group) => (
+          <section className="day-group" key={group.localDate}>
+            <header className="day-heading">
+              <div>
+                <h3>{group.label}</h3>
+                <p>{group.fullDate}</p>
+              </div>
+              <span>{group.entries.length}</span>
+            </header>
+            <div className="day-entries">
+              {group.entries.map((entry) => (
+                <EntryCard
+                  key={entry.entry_id}
+                  entry={entry}
+                  csrfToken={csrfToken}
+                  displayName={displayName}
+                  onRemoved={(entryId) => {
+                    setRecentlyTrashed(entryId);
+                    setEntries((current) =>
+                      current.filter((item) => item.entry_id !== entryId),
+                    );
+                  }}
+                />
+              ))}
+            </div>
+          </section>
         ))}
       </div>
 

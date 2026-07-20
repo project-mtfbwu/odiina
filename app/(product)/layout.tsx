@@ -22,7 +22,11 @@ export default async function ProductLayout({
       </a>
       <OfflineNotice />
       <div className="app-grid">
-        <Navigation email={user.email} />
+        <Navigation
+          csrfToken={csrf}
+          displayName={user.displayName}
+          email={user.email}
+        />
         <main className="app-main" id="main-content" tabIndex={-1}>
           <input
             type="hidden"

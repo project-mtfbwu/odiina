@@ -1,9 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { Button, Label, TextArea, TextField } from "react-aria-components";
+import {
+  Button,
+  Label,
+  Menu,
+  MenuItem,
+  MenuTrigger,
+  Popover,
+  TextArea,
+  TextField,
+} from "react-aria-components";
 import { Upload } from "tus-js-client";
 
+import {
+  CameraIcon,
+  ImageIcon,
+  LocationIcon,
+  MicrophoneIcon,
+  PlusIcon,
+  SendIcon,
+  VideoIcon,
+} from "@/components/icons";
 import {
   acceptedImageMimeTypes,
   maximumEntryImages,
@@ -368,23 +386,14 @@ export function EntryComposer({
   }
 
   return (
-    <section
-      className="panel mb-5 p-4 sm:p-5"
-      aria-labelledby="capture-heading"
-    >
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <section className="composer-shell" aria-labelledby="capture-heading">
+      <div className="composer-heading">
         <div>
-          <p className="eyebrow">Capture</p>
-          <h2
-            id="capture-heading"
-            className="m-0 text-xl font-bold tracking-[-0.03em]"
-          >
-            What happened?
+          <h2 id="capture-heading" className="m-0 text-base font-bold">
+            Capture a moment
           </h2>
         </div>
-        <span className="rounded-full bg-[var(--surface-raised)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)]">
-          {timezone}
-        </span>
+        <span className="composer-timezone">{timezone}</span>
       </div>
 
       {error ? (
@@ -407,8 +416,8 @@ export function EntryComposer({
         <Label className="sr-only">Entry text (optional with photos)</Label>
         <TextArea
           id="entry-body"
-          className="textarea border-0 bg-[var(--surface-raised)] shadow-inner shadow-black/3"
-          placeholder="Write the raw version. You can also add photos."
+          className="composer-textarea"
+          placeholder="Log something…"
           maxLength={maximumLength}
           aria-describedby={error ? "capture-error" : undefined}
           onKeyDown={(event) => {
@@ -421,23 +430,55 @@ export function EntryComposer({
               void submit();
             }
           }}
+          onInput={(event) => {
+            event.currentTarget.style.height = "auto";
+            event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 128)}px`;
+          }}
         />
       </TextField>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="composer-tools">
+        <MenuTrigger>
+          <Button className="composer-icon-button" aria-label="Add media">
+            <PlusIcon className="size-6" />
+          </Button>
+          <Popover className="composer-popover" placement="top start">
+            <Menu className="composer-menu" aria-label="Capture options">
+              <MenuItem onAction={() => chooseInput.current?.click()}>
+                <ImageIcon className="size-5" /> Choose photos
+              </MenuItem>
+              <MenuItem onAction={() => cameraInput.current?.click()}>
+                <CameraIcon className="size-5" /> Take photo
+              </MenuItem>
+              <MenuItem isDisabled>
+                <VideoIcon className="size-5" /> Choose video
+                <span>Stage F</span>
+              </MenuItem>
+              <MenuItem isDisabled>
+                <VideoIcon className="size-5" /> Record video
+                <span>Stage F</span>
+              </MenuItem>
+              <MenuItem isDisabled>
+                <LocationIcon className="size-5" /> Add location
+                <span>Stage G</span>
+              </MenuItem>
+            </Menu>
+          </Popover>
+        </MenuTrigger>
         <Button
-          className="button button-secondary"
+          className="composer-icon-button"
           onPress={() => cameraInput.current?.click()}
           isDisabled={busy || images.length >= maximumEntryImages}
+          aria-label="Take a photo"
         >
-          Take photo
+          <CameraIcon className="size-5" />
         </Button>
         <Button
-          className="button button-secondary"
-          onPress={() => chooseInput.current?.click()}
-          isDisabled={busy || images.length >= maximumEntryImages}
+          className="composer-icon-button"
+          isDisabled
+          aria-label="Voice note recording — available in MVP stage E"
         >
-          Choose photos
+          <MicrophoneIcon className="size-5" />
         </Button>
         <input
           ref={cameraInput}
@@ -460,7 +501,7 @@ export function EntryComposer({
           disabled={busy}
         />
       </div>
-      <p className="mt-2 text-xs text-[var(--muted)]">
+      <p className="composer-help">
         Up to five JPEG, PNG, or WebP images, 15 MiB each. Odiina checks and
         prepares images privately before showing them.
       </p>
@@ -537,7 +578,7 @@ export function EntryComposer({
           <span
             className={remaining < 1000 ? "font-bold text-[var(--danger)]" : ""}
           >
-            {remaining.toLocaleString()} characters left
+            {remaining.toLocaleString("en")} characters left
           </span>
           <span className="hidden sm:inline"> · {shortcut} to save</span>
         </div>
@@ -552,10 +593,12 @@ export function EntryComposer({
             </Button>
           ) : null}
           <Button
-            className="button button-primary min-w-36"
+            className="composer-send-button"
             onPress={() => void submit()}
             isDisabled={!valid || busy}
+            aria-label="Add to today"
           >
+            <SendIcon className="size-5" />
             {busy
               ? "Working…"
               : hasFailedUploads
