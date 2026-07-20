@@ -40,7 +40,7 @@ export async function reviseEntry(
   entryId: string,
   input: ReviseEntryInput,
 ): Promise<MutationResult> {
-  const { data, error } = await supabase.schema("app").rpc("revise_entry", {
+  const parameters = {
     p_body_text: input.bodyText,
     p_change_reason: input.changeReason,
     p_entry_id: entryId,
@@ -49,7 +49,14 @@ export async function reviseEntry(
     p_occurred_local_date: input.occurredLocalDate,
     p_occurred_timezone: input.occurredTimezone,
     p_occurred_utc_offset_minutes: input.occurredUtcOffsetMinutes,
-  });
+  };
+  const { data, error } =
+    input.attachmentIds === undefined
+      ? await supabase.schema("app").rpc("revise_entry", parameters)
+      : await supabase.schema("app").rpc("revise_entry_media", {
+          ...parameters,
+          p_attachment_ids: input.attachmentIds,
+        });
 
   if (error) {
     throw error;

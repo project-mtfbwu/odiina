@@ -113,9 +113,29 @@ port = 54324
 # sender_name = "Admin"
 
 [storage]
-enabled = false
+enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
+
+[storage.buckets.odiina-quarantine]
+public = false
+file_size_limit = "15MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
+
+[storage.buckets.odiina-originals]
+public = false
+file_size_limit = "15MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]
+
+[storage.buckets.odiina-display]
+public = false
+file_size_limit = "8MiB"
+allowed_mime_types = ["image/jpeg"]
+
+[storage.buckets.odiina-ai]
+public = false
+file_size_limit = "4MiB"
+allowed_mime_types = ["image/jpeg"]
 
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]

@@ -5,6 +5,7 @@ import {
   type APIRequestContext,
   type Page,
 } from "@playwright/test";
+import sharp from "sharp";
 
 const invitedEmail = "journey@example.test";
 const mailboxUrl = process.env.ODIINA_MAILBOX_URL ?? "http://127.0.0.1:54324";
@@ -77,11 +78,12 @@ async function expectNoAxeViolations(page: Page): Promise<void> {
   expect(results.violations).toEqual([]);
 }
 
-test("@authenticated completes Vertical Slice 1", async ({
+test("@authenticated completes Vertical Slices 1 and 2", async ({
   context,
   page,
   request,
 }) => {
+  test.setTimeout(180_000);
   test.skip(
     process.env.ODIINA_E2E !== "1",
     "Requires a reset local Supabase stack, Mailpit and ODIINA_E2E=1.",
@@ -145,7 +147,11 @@ test("@authenticated completes Vertical Slice 1", async ({
   ).toBeVisible();
   await expectNoAxeViolations(page);
 
-  await page.getByRole("link", { name: "Edit Entry" }).click();
+  const imageEntryPath = new URL(page.url()).pathname;
+  await page
+    .locator(`a[href="${imageEntryPath}?mode=edit"]`)
+    .getByText("Edit Entry", { exact: true })
+    .click();
   await page.getByLabel("Entry text").fill(revisedBody);
   await page.getByRole("button", { name: "Save revision" }).click();
   await expect(
@@ -177,6 +183,96 @@ test("@authenticated completes Vertical Slice 1", async ({
 
   await page.getByRole("link", { name: "Feed", exact: true }).click();
   await expect(page.getByText(revisedBody, { exact: true })).toBeVisible();
+
+  const cameraInput = page.getByLabel("Take a photo with the device camera");
+  await expect(cameraInput).toHaveAttribute("capture", "environment");
+  await expect(cameraInput).toHaveAttribute(
+    "accept",
+    "image/jpeg,image/png,image/webp",
+  );
+  const blue = await sharp({
+    create: {
+      width: 640,
+      height: 360,
+      channels: 3,
+      background: { r: 20, g: 80, b: 210 },
+    },
+  })
+    .png()
+    .toBuffer();
+  const gold = await sharp({
+    create: {
+      width: 480,
+      height: 480,
+      channels: 3,
+      background: { r: 245, g: 185, b: 50 },
+    },
+  })
+    .webp()
+    .toBuffer();
+  await page.getByLabel("Choose one or more photos").setInputFiles([
+    { name: "blue-geometry.png", mimeType: "image/png", buffer: blue },
+    { name: "gold-geometry.webp", mimeType: "image/webp", buffer: gold },
+  ]);
+  const goldSelection = page
+    .locator("li")
+    .filter({ hasText: "gold-geometry.webp" });
+  await goldSelection.getByRole("button", { name: "Move earlier" }).click();
+  const selectedNames = await page
+    .locator("ol li p.font-bold")
+    .allTextContents();
+  expect(selectedNames).toEqual(["gold-geometry.webp", "blue-geometry.png"]);
+  await expectNoAxeViolations(page);
+
+  await page.getByRole("button", { name: "Add to today" }).click();
+  await expect(page.getByText("2 photos", { exact: true })).toBeVisible({
+    timeout: 120_000,
+  });
+  const imageOnlyCard = page.locator("article").filter({ hasText: "2 photos" });
+  await imageOnlyCard.getByRole("link", { name: /Open Entry from/ }).click();
+  const imageBackLink = page.getByRole("link", { name: "Back to Feed" });
+  await expect(imageBackLink).toBeVisible();
+  await expect(
+    page.getByAltText("Attached image 1 of 2").first(),
+  ).toBeVisible();
+  await expect(
+    page.getByAltText("Attached image 2 of 2").first(),
+  ).toBeVisible();
+
+  const imageOnlyEntryId = (await imageBackLink.getAttribute("href"))?.match(
+    /entry-([0-9a-f-]{36})$/,
+  )?.[1];
+  expect(imageOnlyEntryId).toBeTruthy();
+  await page
+    .locator(`a[href="/entries/${imageOnlyEntryId}?mode=edit"]`)
+    .getByText("Edit Entry", { exact: true })
+    .click();
+  await page.getByLabel("Entry text").fill("Text added to an image-only Entry");
+  await page.getByRole("button", { name: "Save revision" }).click();
+  await expect(
+    page.getByRole("heading", { name: /Revision 2.*Current/ }),
+  ).toBeVisible();
+  // Two images in the current view plus the same immutable membership in
+  // revisions 2 and 1.
+  expect(await page.getByAltText(/Attached image/).count()).toBe(6);
+
+  await page.getByRole("link", { name: "Back to Feed" }).click();
+  const mediaCard = page
+    .locator("article")
+    .filter({ hasText: "Text added to an image-only Entry" });
+  await mediaCard.getByRole("button", { name: "Move Entry to Trash" }).click();
+  await page.getByRole("button", { name: "Move to Trash" }).click();
+  await page.getByRole("link", { name: "Trash" }).click();
+  await expect(
+    page.getByText("Text added to an image-only Entry", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByAltText("Attached image 1 of 2")).toBeVisible();
+  await page.getByRole("button", { name: "Restore Entry" }).click();
+  await page.getByRole("link", { name: "Feed", exact: true }).click();
+  await expect(
+    page.getByText("Text added to an image-only Entry", { exact: true }),
+  ).toBeVisible();
+
   await page.getByRole("link", { name: "Settings" }).click();
   await expectNoAxeViolations(page);
 

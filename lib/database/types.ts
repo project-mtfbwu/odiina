@@ -1,3 +1,10 @@
+export type EntryMedia = {
+  attachment_id: string;
+  media_position: number;
+  width: number;
+  height: number;
+};
+
 export type FeedEntry = {
   entry_id: string;
   current_revision_id: string;
@@ -8,6 +15,7 @@ export type FeedEntry = {
   occurred_local_date: string;
   created_at: string;
   updated_at: string;
+  media: EntryMedia[];
 };
 
 export type EntryRevision = {
@@ -20,6 +28,7 @@ export type EntryRevision = {
   occurred_utc_offset_minutes: number;
   change_reason: string;
   created_at: string;
+  media: EntryMedia[];
 };
 
 export type EntryDetail = {

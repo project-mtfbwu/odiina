@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from "@/lib/auth/server-client";
 import { decodeFeedCursor, encodeFeedCursor } from "@/lib/database/cursor";
 import type {
   EntryDetail,
+  EntryMedia,
   FeedEntry,
   UserPreferences,
 } from "@/lib/database/types";
@@ -34,7 +35,25 @@ export async function getFeedPage(
     throw new Error("feed_read_failed", { cause: error });
   }
 
-  const entries = (data ?? []) as FeedEntry[];
+  const rawEntries = (data ?? []) as Omit<FeedEntry, "media">[];
+  const revisionIds = rawEntries.map((entry) => entry.current_revision_id);
+  const { data: mediaRows, error: mediaError } = revisionIds.length
+    ? await supabase
+        .schema("app")
+        .rpc("revision_media", { p_revision_ids: revisionIds })
+    : { data: [], error: null };
+  if (mediaError) {
+    throw new Error("feed_media_read_failed", { cause: mediaError });
+  }
+  const media = (mediaRows ?? []) as (EntryMedia & {
+    revision_id: string;
+  })[];
+  const entries: FeedEntry[] = rawEntries.map((entry) => ({
+    ...entry,
+    media: media
+      .filter((item) => item.revision_id === entry.current_revision_id)
+      .sort((a, b) => a.media_position - b.media_position),
+  }));
   const lastEntry = entries.at(-1);
   const nextCursor =
     entries.length === feedPageSize && lastEntry
@@ -90,8 +109,26 @@ export async function getEntryDetail(entryId: string): Promise<EntryDetail> {
     throw new Error("entry_history_failed", { cause: revisionError });
   }
 
+  const revisionIds = (revisions ?? []).map((revision) => revision.id);
+  const { data: mediaRows, error: mediaError } = revisionIds.length
+    ? await supabase
+        .schema("app")
+        .rpc("revision_media", { p_revision_ids: revisionIds })
+    : { data: [], error: null };
+  if (mediaError) {
+    throw new Error("entry_media_history_failed", { cause: mediaError });
+  }
+  const media = (mediaRows ?? []) as (EntryMedia & {
+    revision_id: string;
+  })[];
+
   return {
     ...(entry as Omit<EntryDetail, "revisions">),
-    revisions: revisions ?? [],
+    revisions: (revisions ?? []).map((revision) => ({
+      ...revision,
+      media: media
+        .filter((item) => item.revision_id === revision.id)
+        .sort((a, b) => a.media_position - b.media_position),
+    })),
   };
 }

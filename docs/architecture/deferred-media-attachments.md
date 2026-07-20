@@ -1,16 +1,18 @@
 # Deferred media and video architecture
 
-Status: future requirement; not implemented or enabled in vertical slice 1.
+Status: the general attachment boundary and private image pipeline are
+implemented in vertical slice 2. Video and audio remain deferred.
 
 ## Domain boundary
 
-Odiina's future attachment domain must be media-general. Reserved media kinds
-are `image`, `video` and `audio`. They are not accepted values in the current
-database, routes or UI and must be enabled only when each pipeline is complete.
+Odiina's attachment domain is media-general. Reserved media kinds are `image`,
+`video` and `audio`. Only `image` is accepted today, and only through the
+implemented JPEG, PNG and WebP pipeline. Video and audio must be enabled only
+when each pipeline is complete.
 
-A future common attachment identity may own accepted media versions and object
-variants without requiring image dimensions. Image dimensions and image-only
-metadata belong in an image-metadata or typed media-variant structure. Video
+The common attachment identity owns object variants without requiring image
+dimensions. Image dimensions and image-only metadata belong in
+`image_metadata`. Video
 duration, codecs, rotation and orientation belong in video-specific metadata.
 This document defines constraints, not a database schema.
 

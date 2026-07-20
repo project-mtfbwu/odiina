@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { RestoreEntryButton } from "@/components/restore-entry-button";
+import { EntryMedia } from "@/components/entry-media";
 import { StatusCard } from "@/components/status-card";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
 import { getFeedPage } from "@/lib/database/queries";
@@ -53,8 +54,14 @@ export default async function TrashPage() {
           {feed.entries.map((entry) => (
             <article className="panel p-4 sm:p-5" key={entry.entry_id}>
               <p className="m-0 line-clamp-4 leading-7 whitespace-pre-wrap">
-                {entry.body_text}
+                {entry.body_text ||
+                  `${entry.media.length} ${entry.media.length === 1 ? "photo" : "photos"}`}
               </p>
+              {entry.media.length > 0 ? (
+                <div className="mt-3">
+                  <EntryMedia media={entry.media} trash compact />
+                </div>
+              ) : null}
               <div className="mt-4 flex flex-wrap items-end justify-between gap-4 border-t border-[var(--line)] pt-4">
                 <div className="text-xs leading-5 text-[var(--muted)]">
                   <div>Occurred {formatDate(entry.occurred_at)}</div>

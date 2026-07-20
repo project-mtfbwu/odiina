@@ -3,6 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
+    const storageEndpoint =
+      process.env.ODIINA_STORAGE_TUS_URL ??
+      (process.env.SUPABASE_URL
+        ? new URL(
+            "/storage/v1/upload/resumable/sign",
+            process.env.SUPABASE_URL,
+          ).toString()
+        : null);
+    const storageOrigin = storageEndpoint
+      ? new URL(storageEndpoint).origin
+      : "";
     const scriptSource =
       process.env.NODE_ENV === "production"
         ? "'self' 'unsafe-inline'"
@@ -18,9 +29,9 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               `script-src ${scriptSource}`,
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data:",
+              "img-src 'self' data: blob:",
               "font-src 'self'",
-              "connect-src 'self'",
+              `connect-src 'self' ${storageOrigin}`.trim(),
               "form-action 'self'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
@@ -33,7 +44,7 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value:
-              "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+              "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
           },
           { key: "X-Frame-Options", value: "DENY" },
           ...(process.env.NODE_ENV === "production"

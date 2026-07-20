@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { entryPreview } from "@/components/entry-preview";
+import { EntryMedia } from "@/components/entry-media";
 import { TrashEntryButton } from "@/components/trash-entry-button";
 import type { FeedEntry } from "@/lib/database/types";
 
@@ -56,9 +57,16 @@ export function EntryCard({
         )}`}
       >
         <span className="line-clamp-4 sm:line-clamp-5">
-          {entryPreview(entry.body_text)}
+          {entry.body_text
+            ? entryPreview(entry.body_text)
+            : `${entry.media.length} ${entry.media.length === 1 ? "photo" : "photos"}`}
         </span>
       </Link>
+      {entry.media.length > 0 ? (
+        <div className="mt-3">
+          <EntryMedia media={entry.media} compact />
+        </div>
+      ) : null}
       <div className="mt-4 flex items-center justify-between border-t border-[var(--line)] pt-3">
         <span className="text-xs text-[var(--muted)]">
           Revision {entry.revision_number}

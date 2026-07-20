@@ -19,29 +19,44 @@ on private.search_documents (user_id, source_task_id)
 where document_kind = 'task' and source_task_id is not null;
 ```
 
-Search is not implemented in vertical slice 1.
+Search is not implemented in vertical slice 1 or 2.
 
 ## Attachment-capable Entries
 
-Future finalization must allow either non-empty text or at least one valid
-attachment. The revision table therefore permits an empty `body_text` and does
-not encode a permanent “all active Entries contain text” invariant. The current
-text-only `create_entry` and `revise_entry` RPCs require 1–100,000 trimmed
-characters. Attachment-aware finalization will replace that RPC-level rule.
+Finalization allows either non-empty text or at least one accepted attachment.
+The revision table therefore permits an empty `body_text` and does not encode
+an “all active Entries contain text” invariant. Slice 2 adds attachment-aware
+activation and revision RPCs while retaining the text-only RPCs for backward
+compatibility.
 
-Attachments must not be modeled as image-only. A later extension will use a
-general media abstraction with reserved kinds `image`, `video` and `audio`.
-These values are architectural reservations only: this migration creates no
-attachment table, upload route or MIME allowlist and accepts none of them.
+Attachments are modeled through a general media abstraction with reserved
+kinds `image`, `video` and `audio`. Slice 2 accepts only `image` through the
+implemented JPEG, PNG and WebP pipeline. Video and audio remain architectural
+reservations and are rejected by current routes and mutation functions.
 
-Common attachment records must not require image dimensions. Image dimensions
+Common attachment records do not require image dimensions. Image dimensions
 and EXIF-derived facts belong in image metadata or media-variant structures.
 Video-specific duration, codecs, rotation, renditions, thumbnails, extracted
 audio and transcripts likewise belong in typed metadata or variant records.
 The original accepted video remains private and immutable.
 
+The Slice 2 extension is additive:
+
+- `attachments` owns the media identity and lifecycle.
+- `attachment_objects` records quarantine and immutable accepted variants.
+- `entry_revision_attachments` freezes ordered membership per revision.
+- `image_metadata` contains image-only facts.
+- `media_processing_jobs` and `media_worker_principals` support narrow,
+  lease-bound background processing.
+
+Exact composite ownership keys prevent cross-user and cross-Entry references.
+An immutable-membership trigger blocks updates and deletes. Private Storage
+policies expose only a signed quarantine insert to the owner, the active lease
+to a registered worker, and verified display objects through Odiina’s
+owner-authorized delivery route.
+
 See [deferred-media-attachments.md](deferred-media-attachments.md) for the
-future extension boundary.
+remaining video and audio extension boundary.
 
 ## Purpose-specific function ownership
 

@@ -23,6 +23,12 @@
     "scan:client": "node scripts/scan-client-output.mjs",
     "configure:local-env": "supabase status -o json | node scripts/configure-local-env.mjs",
     "seed:e2e-user": "node --env-file-if-exists=.env.local scripts/create-local-test-user.mjs",
+    "media:scanner": "docker compose -f compose.media.yml up -d",
+    "media:scanner:stop": "docker compose -f compose.media.yml down",
+    "media:worker:bootstrap": "node scripts/bootstrap-media-worker.mjs",
+    "media:worker": "node --env-file-if-exists=.env.local scripts/media-worker.mjs",
+    "media:worker:once": "node --env-file-if-exists=.env.local scripts/media-worker.mjs --once",
+    "test:scanner": "node scripts/certify-clamav.mjs",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset --local",
     "supabase:stop": "supabase stop",
@@ -35,6 +41,8 @@
     "react": "19.2.7",
     "react-aria-components": "1.19.0",
     "react-dom": "19.2.7",
+    "sharp": "0.34.4",
+    "tus-js-client": "4.3.1",
     "zod": "4.4.3"
   },
   "devDependencies": {

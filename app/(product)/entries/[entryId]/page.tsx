@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { EntryEditor } from "@/components/entry-editor";
+import { EntryMedia } from "@/components/entry-media";
 import { RestoreEntryButton } from "@/components/restore-entry-button";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
 import { getEntryDetail, getPreferences } from "@/lib/database/queries";
@@ -81,10 +82,23 @@ export default async function EntryPage({
           initialOccurredAt={current.occurred_at}
           timezone={preferences.iana_timezone ?? current.occurred_timezone}
           csrfToken={csrf}
+          currentMedia={current.media}
         />
       ) : (
         <article className="panel p-5 sm:p-7">
-          <p className="entry-body whitespace-pre-wrap">{current.body_text}</p>
+          {current.body_text ? (
+            <p className="entry-body whitespace-pre-wrap">
+              {current.body_text}
+            </p>
+          ) : null}
+          {current.media.length > 0 ? (
+            <div className={current.body_text ? "mt-5" : ""}>
+              <EntryMedia
+                media={current.media}
+                trash={entry.lifecycle_state === "trashed"}
+              />
+            </div>
+          ) : null}
           {entry.lifecycle_state === "trashed" ? (
             <div className="mt-6 border-t border-[var(--border)] pt-5">
               <p className="text-sm text-[var(--muted)]">
@@ -133,6 +147,15 @@ export default async function EntryPage({
               <p className="mt-3 mb-0 text-sm leading-6 whitespace-pre-wrap">
                 {revision.body_text}
               </p>
+              {revision.media.length > 0 ? (
+                <div className="mt-3">
+                  <EntryMedia
+                    media={revision.media}
+                    trash={entry.lifecycle_state === "trashed"}
+                    compact
+                  />
+                </div>
+              ) : null}
             </li>
           ))}
         </ol>

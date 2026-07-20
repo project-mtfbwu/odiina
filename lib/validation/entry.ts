@@ -20,7 +20,12 @@ export const createEntrySchema = occurrenceSchema.extend({
 
 export const reviseEntrySchema = occurrenceSchema.extend({
   expectedCurrentRevisionId: z.uuid(),
-  bodyText: z.string().trim().min(1).max(100_000),
+  bodyText: z.string().max(100_000),
+  attachmentIds: z
+    .array(z.uuid())
+    .max(5)
+    .refine((ids) => new Set(ids).size === ids.length)
+    .optional(),
   changeReason: z.enum(["edited", "occurrence_corrected"]),
 });
 

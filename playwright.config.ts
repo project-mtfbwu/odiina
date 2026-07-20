@@ -57,5 +57,15 @@ export default defineConfig({
       grep: /@authenticated/,
       use: { viewport: { width: 1200, height: 900 } },
     },
+    {
+      name: "authenticated-mobile",
+      grep: /@authenticated/,
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        viewport: { width: 390, height: 844 },
+      },
+    },
   ],
 });

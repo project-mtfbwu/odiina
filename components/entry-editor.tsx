@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Label, TextArea, TextField } from "react-aria-components";
 import { useRouter } from "next/navigation";
 
+import type { EntryMedia } from "@/lib/database/types";
 import { localCivilDate, utcOffsetMinutes } from "@/lib/validation/timezone";
 
 export function EntryEditor({
@@ -13,6 +14,7 @@ export function EntryEditor({
   initialOccurredAt,
   timezone,
   csrfToken,
+  currentMedia,
 }: {
   entryId: string;
   currentRevisionId: string;
@@ -20,16 +22,26 @@ export function EntryEditor({
   initialOccurredAt: string;
   timezone: string;
   csrfToken: string;
+  currentMedia: EntryMedia[];
 }) {
   const router = useRouter();
   const [body, setBody] = useState(initialBody);
+  const [media, setMedia] = useState(currentMedia);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const remaining = 100_000 - Array.from(body).length;
-  const changed = body !== initialBody;
+  const changed =
+    body !== initialBody ||
+    media.map((item) => item.attachment_id).join(",") !==
+      currentMedia.map((item) => item.attachment_id).join(",");
 
   async function save() {
-    if (!changed || !body.trim() || remaining < 0 || busy) {
+    if (
+      !changed ||
+      (!body.trim() && media.length === 0) ||
+      remaining < 0 ||
+      busy
+    ) {
       return;
     }
     setBusy(true);
@@ -51,6 +63,7 @@ export function EntryEditor({
           occurredLocalDate: localCivilDate(occurredAt, timezone),
           occurredUtcOffsetMinutes: utcOffsetMinutes(occurredAt, timezone),
           changeReason: "edited",
+          attachmentIds: media.map((item) => item.attachment_id),
         }),
       });
       const result = (await response.json()) as { message?: string };
@@ -99,6 +112,83 @@ export function EntryEditor({
           maxLength={100_000}
         />
       </TextField>
+      {media.length > 0 ? (
+        <section className="mt-5" aria-labelledby="edit-media-heading">
+          <h3 id="edit-media-heading" className="text-sm font-bold">
+            Attached images
+          </h3>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Removing or reordering creates a new revision. Earlier revisions
+            keep their original image order.
+          </p>
+          <ol className="mt-3 grid gap-3 sm:grid-cols-2">
+            {media.map((item, index) => (
+              <li
+                key={item.attachment_id}
+                className="rounded-xl border border-[var(--line)] p-3"
+              >
+                {/* Authenticated safe display derivative only. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/media/${item.attachment_id}`}
+                  alt={`Attached image ${index + 1} of ${media.length}`}
+                  width={item.width}
+                  height={item.height}
+                  className="aspect-video w-full rounded-lg object-cover"
+                />
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <Button
+                    className="button button-quiet min-h-11 px-3 text-xs"
+                    isDisabled={busy || index === 0}
+                    onPress={() =>
+                      setMedia((current) => {
+                        const next = [...current];
+                        [next[index - 1], next[index]] = [
+                          next[index],
+                          next[index - 1],
+                        ];
+                        return next;
+                      })
+                    }
+                  >
+                    Move earlier
+                  </Button>
+                  <Button
+                    className="button button-quiet min-h-11 px-3 text-xs"
+                    isDisabled={busy || index === media.length - 1}
+                    onPress={() =>
+                      setMedia((current) => {
+                        const next = [...current];
+                        [next[index], next[index + 1]] = [
+                          next[index + 1],
+                          next[index],
+                        ];
+                        return next;
+                      })
+                    }
+                  >
+                    Move later
+                  </Button>
+                  <Button
+                    className="button button-quiet min-h-11 px-3 text-xs text-[var(--danger)]"
+                    isDisabled={busy}
+                    onPress={() =>
+                      setMedia((current) =>
+                        current.filter(
+                          (candidate) =>
+                            candidate.attachment_id !== item.attachment_id,
+                        ),
+                      )
+                    }
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs text-[var(--muted)]">
           {remaining.toLocaleString()} characters left
@@ -114,7 +204,12 @@ export function EntryEditor({
           <Button
             className="button button-primary"
             onPress={() => void save()}
-            isDisabled={!changed || !body.trim() || remaining < 0 || busy}
+            isDisabled={
+              !changed ||
+              (!body.trim() && media.length === 0) ||
+              remaining < 0 ||
+              busy
+            }
           >
             {busy ? "Saving…" : "Save revision"}
           </Button>
