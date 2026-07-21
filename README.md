@@ -3,7 +3,7 @@
 Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
-This repository contains the local scaffold and the first two vertical slices.
+This repository contains the local scaffold and the first three MVP increments.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -20,11 +20,15 @@ tagline or final brand assets have been selected.
 - Signed resumable uploads into private quarantine storage
 - Fail-closed ClamAV scanning, strict decoding and metadata-stripping derivatives
 - Image-only Entries and immutable, ordered image membership per revision
+- Calendar recall using explicit occurrence dates
+- Private Profile identity with display name, canonical unique handle and bio
+- Private avatar/banner processing and owner-authorized delivery
+- Truthful owner-scoped Profile statistics
 - Honest loading, empty, error and offline states
 - Repository migration, seed data, pgTAP, unit and browser-test scaffolds
 
 AI, OpenAI calls, video, audio, sharing, reports, search, tags, projects,
-calendar, charts, voice and private-content service-worker caching are
+charts, voice and private-content service-worker caching are
 deliberately absent. Their feature flags are false.
 
 ## Media boundary
@@ -72,6 +76,8 @@ See [vertical-slice-1.md](docs/implementation/vertical-slice-1.md),
 [the auth ADR](docs/decisions/0001-server-only-supabase-auth.md),
 [database errata](docs/architecture/database-errata.md), and
 [deferred media architecture](docs/architecture/deferred-media-attachments.md).
+Increment C's identity, media-retention and statistics policies are documented
+in [increment-c-private-profile.md](docs/implementation/increment-c-private-profile.md).
 
 ## Local prerequisites
 

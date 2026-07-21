@@ -9,6 +9,8 @@ import type {
   EntryDetail,
   EntryMedia,
   FeedEntry,
+  PrivateProfile,
+  ProfileStatistics,
   UserPreferences,
 } from "@/lib/database/types";
 import { isValidCivilDate, monthStart } from "@/lib/calendar/civil-date";
@@ -199,5 +201,49 @@ export async function getEntryDetail(entryId: string): Promise<EntryDetail> {
         .filter((item) => item.revision_id === revision.id)
         .sort((a, b) => a.media_position - b.media_position),
     })),
+  };
+}
+
+export async function getPrivateProfile(): Promise<PrivateProfile> {
+  const supabase = await createSupabaseServerClient();
+  const { data: profile, error } = await supabase
+    .schema("app")
+    .from("profiles")
+    .select("display_name,handle,bio,created_at,updated_at")
+    .single();
+  if (error || !profile) {
+    throw new Error("profile_read_failed", { cause: error });
+  }
+  const { data: media, error: mediaError } = await supabase
+    .schema("app")
+    .from("profile_media")
+    .select("media_role,attachment_id");
+  if (mediaError) {
+    throw new Error("profile_media_read_failed", { cause: mediaError });
+  }
+  const avatar = media?.find((item) => item.media_role === "avatar");
+  const banner = media?.find((item) => item.media_role === "banner");
+  return {
+    ...profile,
+    avatar_attachment_id: avatar?.attachment_id ?? null,
+    banner_attachment_id: banner?.attachment_id ?? null,
+  } as PrivateProfile;
+}
+
+export async function getProfileStatistics(): Promise<ProfileStatistics> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema("app")
+    .rpc("profile_statistics");
+  const row = (data as Record<string, number | string>[] | null)?.[0];
+  if (error || !row) {
+    throw new Error("profile_statistics_read_failed", { cause: error });
+  }
+  return {
+    active_entries: Number(row.active_entries),
+    active_logging_days: Number(row.active_logging_days),
+    current_month_entries: Number(row.current_month_entries),
+    image_entries: Number(row.image_entries),
+    edited_entries: Number(row.edited_entries),
   };
 }

@@ -18,6 +18,8 @@ const protectedPagePrefixes = [
   "/entries",
   "/trash",
   "/settings",
+  "/calendar",
+  "/profile",
   "/onboarding",
 ];
 

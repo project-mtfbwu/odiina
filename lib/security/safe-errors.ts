@@ -8,6 +8,12 @@ const safeErrorMap: Record<string, string> = {
   odiina_occurrence_invalid: "Check the date, time and timezone.",
   odiina_entry_invalid: "Enter between 1 and 100,000 characters.",
   odiina_preferences_invalid: "Choose a valid timezone and week start.",
+  odiina_profile_invalid: "Check the Profile fields and try again.",
+  odiina_handle_unavailable: "That handle is unavailable. Choose another.",
+  odiina_profile_media_unready:
+    "Wait for the Profile image to finish processing, then try again.",
+  odiina_image_upload_invalid:
+    "Choose a JPEG, PNG, or WebP image up to 15 MiB.",
 };
 
 export function safeErrorMessage(code: string | undefined): string {

@@ -74,4 +74,12 @@ describe("private image safety pipeline", () => {
       "image_dimensions_invalid",
     );
   });
+
+  it("creates purpose-specific avatar and banner display geometry", async () => {
+    const input = await geometric("png");
+    const avatar = await prepareSafeImage(input, "profile_avatar");
+    const banner = await prepareSafeImage(input, "profile_banner");
+    expect(avatar.display.info).toMatchObject({ width: 640, height: 640 });
+    expect(banner.display.info).toMatchObject({ width: 1600, height: 533 });
+  });
 });

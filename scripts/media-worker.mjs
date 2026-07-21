@@ -93,7 +93,11 @@ async function processJob(job) {
   }
 
   await heartbeat(job, "preparing");
-  const prepared = await prepareSafeImage(input);
+  const purposeResult = await supabase
+    .schema("app")
+    .rpc("processing_media_purpose", { p_attachment_id: job.attachment_id });
+  rpcError(purposeResult.error);
+  const prepared = await prepareSafeImage(input, purposeResult.data);
   await uploadImmutable(
     "odiina-originals",
     job.original_key,

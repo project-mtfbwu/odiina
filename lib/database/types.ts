@@ -52,3 +52,21 @@ export type CalendarActivity = {
   occurred_local_date: string;
   entry_count: number;
 };
+
+export type PrivateProfile = {
+  display_name: string;
+  handle: string;
+  bio: string;
+  created_at: string;
+  updated_at: string;
+  avatar_attachment_id: string | null;
+  banner_attachment_id: string | null;
+};
+
+export type ProfileStatistics = {
+  active_entries: number;
+  active_logging_days: number;
+  current_month_entries: number;
+  image_entries: number;
+  edited_entries: number;
+};

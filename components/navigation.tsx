@@ -11,36 +11,28 @@ import {
   SettingsIcon,
   TrashIcon,
 } from "@/components/icons";
-
-function initials(displayName: string): string {
-  return displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
+import { ProfileAvatar } from "@/components/profile-media";
 
 const activeItems = [
   { href: "/feed", label: "Feed", icon: FeedIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
+  { href: "/profile", label: "Profile", icon: ProfileIcon },
   { href: "/trash", label: "Trash", icon: TrashIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-const stagedItems = [{ label: "Profile", stage: "C", icon: ProfileIcon }];
-
 export function Navigation({
   csrfToken,
   displayName,
-  email,
+  handle,
+  avatarUrl,
 }: {
   csrfToken: string;
   displayName: string;
-  email: string | null;
+  handle: string;
+  avatarUrl: string | null;
 }) {
   const pathname = usePathname();
-  const avatarInitials = initials(displayName) || "O";
 
   return (
     <>
@@ -69,12 +61,14 @@ export function Navigation({
         </div>
 
         <div className="rail-profile">
-          <div className="avatar avatar-medium" aria-hidden="true">
-            {avatarInitials}
-          </div>
+          <ProfileAvatar
+            displayName={displayName}
+            src={avatarUrl}
+            className="avatar-medium"
+          />
           <div className="min-w-0">
             <p className="rail-profile-name">{displayName}</p>
-            <p className="rail-profile-email">{email ?? "Signed in"}</p>
+            <p className="rail-profile-email">@{handle}</p>
           </div>
         </div>
 
@@ -100,31 +94,13 @@ export function Navigation({
               );
             })}
           </ul>
-
-          <div className="rail-stage">
-            <p className="rail-section-label">Next MVP increments</p>
-            {stagedItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  className="rail-nav-item rail-nav-staged"
-                  aria-disabled="true"
-                  key={item.label}
-                >
-                  <Icon className="size-5" />
-                  <span>{item.label}</span>
-                  <span className="stage-badge">Stage {item.stage}</span>
-                </div>
-              );
-            })}
-          </div>
         </nav>
 
         <div className="rail-footer">
-          <a className="capture-shortcut" href="#capture-heading">
+          <Link className="capture-shortcut" href="/feed#capture-heading">
             <PlusIcon className="size-5" />
             Capture
-          </a>
+          </Link>
           <form action="/auth/logout" method="post">
             <input type="hidden" name="csrf" value={csrfToken} />
             <button className="rail-logout" type="submit">
@@ -153,15 +129,19 @@ export function Navigation({
           <CalendarIcon className="size-5" />
           Calendar
         </Link>
-        <a className="mobile-capture-button" href="#capture-heading">
+        <Link className="mobile-capture-button" href="/feed#capture-heading">
           <PlusIcon className="size-6" />
           <span className="sr-only">Jump to capture composer</span>
-        </a>
-        <span className="mobile-nav-item" aria-disabled="true">
+        </Link>
+        <Link
+          href="/profile"
+          className="mobile-nav-item"
+          data-active={pathname.startsWith("/profile") || undefined}
+          aria-current={pathname.startsWith("/profile") ? "page" : undefined}
+        >
           <ProfileIcon className="size-5" />
           Profile
-          <span className="sr-only">available in MVP stage C</span>
-        </span>
+        </Link>
         <Link
           href="/settings"
           className="mobile-nav-item"

@@ -58,6 +58,20 @@ owner-authorized delivery route.
 See [deferred-media-attachments.md](deferred-media-attachments.md) for the
 remaining video and audio extension boundary.
 
+## Private Profile media purpose
+
+Increment C keeps Profile images in the certified attachment pipeline rather
+than creating a parallel uploader. `attachments.purpose` distinguishes Entry,
+avatar and banner images. Entry-revision membership rejects non-Entry purposes,
+and `profile_media` stores the current owner-scoped avatar/banner pointers with
+composite ownership foreign keys. Profile saving can advance a pointer only to
+an accepted image of the matching purpose.
+
+Removal or replacement does not synchronously delete accepted bytes. A future
+retention worker must reconcile unreferenced Profile attachments across
+quarantine, original, display and reserved derivative variants without ever
+deleting media referenced by immutable Entry history.
+
 ## Purpose-specific function ownership
 
 The baseline migration runs as `postgres`, verifies that runner explicitly,

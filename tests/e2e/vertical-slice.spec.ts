@@ -79,12 +79,12 @@ async function expectNoAxeViolations(page: Page): Promise<void> {
   expect(results.violations).toEqual([]);
 }
 
-test("@authenticated completes Vertical Slices 1 and 2", async ({
+test("@authenticated completes Odiina Increments A through C", async ({
   context,
   page,
   request,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(360_000);
   test.skip(
     process.env.ODIINA_E2E !== "1",
     "Requires a reset local Supabase stack, Mailpit and ODIINA_E2E=1.",
@@ -112,6 +112,93 @@ test("@authenticated completes Vertical Slices 1 and 2", async ({
   ).toBeVisible();
   await expectNoAxeViolations(page);
 
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(
+    page.getByRole("heading", { name: "Odiina member", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".profile-handle")).toHaveText(
+    /^@member_[a-f0-9]{23}$/,
+  );
+  await expectNoAxeViolations(page);
+
+  await page.getByRole("link", { name: "Edit Profile" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Edit Profile" }),
+  ).toBeVisible();
+  await page.getByLabel("Display name").fill("Journey Example");
+  await page.getByLabel("Handle").fill("journey_example");
+  await page
+    .getByLabel("Bio")
+    .fill("Private days, recorded honestly.\nBuilt one Entry at a time.");
+  const avatarFixture = await sharp({
+    create: {
+      width: 720,
+      height: 480,
+      channels: 3,
+      background: { r: 100, g: 72, b: 210 },
+    },
+  })
+    .png()
+    .toBuffer();
+  const bannerFixture = await sharp({
+    create: {
+      width: 1200,
+      height: 500,
+      channels: 3,
+      background: { r: 28, g: 48, b: 112 },
+    },
+  })
+    .jpeg()
+    .toBuffer();
+  await page.getByLabel("Choose avatar").setInputFiles({
+    name: "profile-avatar.png",
+    mimeType: "image/png",
+    buffer: avatarFixture,
+  });
+  await expect(page.locator("#avatar-status")).toContainText("Ready", {
+    timeout: 120_000,
+  });
+  await page.getByLabel("Choose banner").setInputFiles({
+    name: "profile-banner.jpg",
+    mimeType: "image/jpeg",
+    buffer: bannerFixture,
+  });
+  await expect(page.locator("#banner-status")).toContainText("Ready", {
+    timeout: 120_000,
+  });
+  await expectNoAxeViolations(page);
+  await page.getByRole("button", { name: "Save Profile" }).click();
+  await expect(page).toHaveURL(/\/profile\?saved=1#profile-edit-action$/);
+  await expect(page.getByRole("status")).toHaveText("Profile saved.");
+  await expect(page.getByRole("link", { name: "Edit Profile" })).toBeFocused();
+  await expect(
+    page.getByRole("heading", { name: "Journey Example" }),
+  ).toBeVisible();
+  await expect(page.locator(".profile-handle")).toHaveText("@journey_example");
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Journey Example" }),
+  ).toBeVisible();
+  await expect(page.locator(".rail-profile-name")).toHaveText(
+    "Journey Example",
+  );
+  await expect(page.locator(".profile-banner img")).toBeVisible();
+  await expect(page.locator(".profile-avatar-large img")).toBeVisible();
+  for (const role of ["avatar", "banner"]) {
+    const response = await page.request.get(`/api/profile/media/${role}`);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("image/jpeg");
+    expect(response.headers()["cache-control"]).toContain("no-store");
+  }
+
+  const activeEntryStat = page
+    .locator(".profile-stat-grid > div")
+    .filter({ hasText: "Active Entries" })
+    .locator("dd");
+  await expect(activeEntryStat).toHaveText("0");
+  await page.getByRole("link", { name: "Feed", exact: true }).click();
+
   const composer = page.getByLabel("Entry text");
   await composer.fill("Offline draft retained by Odiina");
   await context.setOffline(true);
@@ -125,8 +212,16 @@ test("@authenticated completes Vertical Slices 1 and 2", async ({
   const originalBody = "Vertical slice browser Entry";
   const revisedBody = "Vertical slice browser Entry — revised";
   await composer.fill(originalBody);
-  await composer.press("Control+Enter");
+  await Promise.all([
+    page.waitForEvent("load"),
+    composer.press("Control+Enter"),
+  ]);
   await expect(page.getByText(originalBody, { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(activeEntryStat).toHaveText("1");
+  await page.getByRole("link", { name: "Feed", exact: true }).click();
 
   const parallelReads = await Promise.all(
     Array.from({ length: 4 }, () => page.request.get("/api/feed")),
@@ -175,12 +270,20 @@ test("@authenticated completes Vertical Slices 1 and 2", async ({
     page.getByRole("heading", { name: "Recent Entries" }),
   ).toBeFocused();
 
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(activeEntryStat).toHaveText("0");
+
   await page.getByRole("link", { name: "Trash" }).click();
   await expect(page.getByRole("heading", { name: "Trash" })).toBeVisible();
   await expect(page.getByText(revisedBody, { exact: true })).toBeVisible();
   await expectNoAxeViolations(page);
   await page.getByRole("button", { name: "Restore Entry" }).click();
   await expect(page.getByText("Trash is empty")).toBeVisible();
+
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(activeEntryStat).toHaveText("1");
 
   await page.getByRole("link", { name: "Feed", exact: true }).click();
   await expect(page.getByText(revisedBody, { exact: true })).toBeVisible();
@@ -274,6 +377,32 @@ test("@authenticated completes Vertical Slices 1 and 2", async ({
     page.getByText("Text added to an image-only Entry", { exact: true }),
   ).toBeVisible();
 
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await page.getByRole("link", { name: "Edit Profile" }).click();
+  await page.getByLabel("Display name").fill("Unsaved replacement");
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("link", { name: "Cancel" }).click();
+  await expect(page).toHaveURL(/\/profile#profile-edit-action$/);
+  await expect(
+    page.getByRole("heading", { name: "Journey Example" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Edit Profile" })).toBeFocused();
+  await page.getByRole("link", { name: "Edit Profile" }).click();
+  await page
+    .getByRole("group", { name: "Avatar" })
+    .getByRole("button", { name: "Remove" })
+    .click();
+  await page.getByRole("button", { name: "Save Profile" }).click();
+  const initialsAvatar = page.locator('.profile-avatar-large[role="img"]');
+  await expect(initialsAvatar).toBeVisible();
+  await expect(initialsAvatar).toHaveAccessibleName(
+    "Journey Example's initials",
+  );
+  expect((await page.request.get("/api/profile/media/avatar")).status()).toBe(
+    404,
+  );
+
   await page.getByRole("link", { name: "Settings" }).click();
   await expectNoAxeViolations(page);
 
@@ -295,4 +424,9 @@ test("@authenticated completes Vertical Slices 1 and 2", async ({
 
   await page.goto("/feed");
   await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/profile");
+  await expect(page).toHaveURL(/\/login$/);
+  expect((await page.request.get("/api/profile/media/banner")).status()).toBe(
+    401,
+  );
 });

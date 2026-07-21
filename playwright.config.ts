@@ -131,5 +131,47 @@ export default defineConfig({
         viewport: { width: 1440, height: 1000 },
       },
     },
+    {
+      name: "profile-layout-320",
+      grep: /@profile-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 320, height: 720 },
+      },
+    },
+    {
+      name: "profile-layout-768",
+      grep: /@profile-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 768, height: 1024 },
+      },
+    },
+    {
+      name: "profile-layout-960",
+      grep: /@profile-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 960, height: 900 },
+      },
+    },
+    {
+      name: "profile-layout-1440",
+      grep: /@profile-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 1440, height: 1000 },
+      },
+    },
   ],
 });

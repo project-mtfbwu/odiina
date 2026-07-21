@@ -6,7 +6,10 @@ export const limits: {
 
 export function sha256(buffer: Buffer): Buffer;
 export function detectImageSignature(buffer: Buffer): "jpeg" | "png" | "webp";
-export function prepareSafeImage(buffer: Buffer): Promise<{
+export function prepareSafeImage(
+  buffer: Buffer,
+  purpose?: "entry" | "profile_avatar" | "profile_banner",
+): Promise<{
   format: "jpeg" | "png" | "webp";
   inputWidth: number;
   inputHeight: number;

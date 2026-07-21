@@ -36,7 +36,7 @@ export function detectImageSignature(buffer) {
   throw new Error("unsupported_signature");
 }
 
-export async function prepareSafeImage(buffer) {
+export async function prepareSafeImage(buffer, purpose = "entry") {
   if (!Buffer.isBuffer(buffer) || buffer.length < 12)
     throw new Error("image_truncated");
   if (buffer.length > limits.bytes) throw new Error("image_too_large");
@@ -65,18 +65,24 @@ export async function prepareSafeImage(buffer) {
     throw new Error("animated_image_rejected");
   }
 
+  const displayResize =
+    purpose === "profile_avatar"
+      ? { width: 640, height: 640, fit: "cover", position: "centre" }
+      : purpose === "profile_banner"
+        ? { width: 1600, height: 533, fit: "cover", position: "centre" }
+        : {
+            width: 2400,
+            height: 2400,
+            fit: "inside",
+            withoutEnlargement: true,
+          };
   const display = await sharp(buffer, {
     failOn: "error",
     limitInputPixels: limits.pixels,
     sequentialRead: true,
   })
     .rotate()
-    .resize({
-      width: 2400,
-      height: 2400,
-      fit: "inside",
-      withoutEnlargement: true,
-    })
+    .resize(displayResize)
     .jpeg({ quality: 86, progressive: true, mozjpeg: true })
     .toBuffer({ resolveWithObject: true });
   const ai = await sharp(buffer, {
