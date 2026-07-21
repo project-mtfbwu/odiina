@@ -1,42 +1,29 @@
-import { CalendarIcon, LockIcon } from "@/components/icons";
-import type { FeedDayGroup } from "@/lib/feed/grouping";
+import { CalendarMonth } from "@/components/calendar-month";
+import { LockIcon } from "@/components/icons";
+import type { CalendarActivity } from "@/lib/database/types";
 
 export function FeedContextRail({
-  groups,
+  activity,
+  selectedDate,
+  today,
+  weekStartsOn,
   timezone,
 }: {
-  groups: FeedDayGroup[];
+  activity: CalendarActivity[];
+  selectedDate: string;
+  today: string;
+  weekStartsOn: number;
   timezone: string;
 }) {
   return (
     <aside className="context-rail" aria-label="Feed context">
-      <section className="context-card">
-        <div className="context-card-icon">
-          <CalendarIcon className="size-5" />
-        </div>
-        <p className="eyebrow">This page</p>
-        <h2>Recent days</h2>
-        {groups.length ? (
-          <ol className="context-days">
-            {groups.slice(0, 5).map((group) => (
-              <li key={group.localDate}>
-                <span>
-                  <strong>{group.label}</strong>
-                  <small>{group.fullDate}</small>
-                </span>
-                <span className="context-count">{group.entries.length}</span>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className="context-copy">
-            Your first captured moment will appear here.
-          </p>
-        )}
-        <p className="context-note">
-          Calendar navigation becomes interactive in MVP stage B.
-        </p>
-      </section>
+      <CalendarMonth
+        selectedDate={selectedDate}
+        today={today}
+        weekStartsOn={weekStartsOn}
+        activity={activity}
+        compact
+      />
       <section className="context-card context-private">
         <LockIcon className="size-5" />
         <div>

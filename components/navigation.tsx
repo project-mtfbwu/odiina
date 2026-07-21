@@ -23,14 +23,12 @@ function initials(displayName: string): string {
 
 const activeItems = [
   { href: "/feed", label: "Feed", icon: FeedIcon },
+  { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/trash", label: "Trash", icon: TrashIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-const stagedItems = [
-  { label: "Calendar", stage: "B", icon: CalendarIcon },
-  { label: "Profile", stage: "C", icon: ProfileIcon },
-];
+const stagedItems = [{ label: "Profile", stage: "C", icon: ProfileIcon }];
 
 export function Navigation({
   csrfToken,
@@ -146,11 +144,15 @@ export function Navigation({
           <FeedIcon className="size-5" />
           Feed
         </Link>
-        <span className="mobile-nav-item" aria-disabled="true">
+        <Link
+          href="/calendar"
+          className="mobile-nav-item"
+          data-active={pathname === "/calendar" || undefined}
+          aria-current={pathname === "/calendar" ? "page" : undefined}
+        >
           <CalendarIcon className="size-5" />
           Calendar
-          <span className="sr-only">available in MVP stage B</span>
-        </span>
+        </Link>
         <a className="mobile-capture-button" href="#capture-heading">
           <PlusIcon className="size-6" />
           <span className="sr-only">Jump to capture composer</span>

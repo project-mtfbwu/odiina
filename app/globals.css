@@ -406,6 +406,199 @@ select {
   display: none;
 }
 
+.calendar-page {
+  width: min(100%, 72rem);
+  margin-inline: auto;
+  padding-bottom: 14rem;
+}
+
+.calendar-month,
+.compact-calendar {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  padding: clamp(0.65rem, 2vw, 1.25rem);
+}
+
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.calendar-toolbar h2 {
+  margin: 0;
+  font-size: clamp(1.05rem, 4vw, 1.4rem);
+  letter-spacing: -0.03em;
+}
+
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.calendar-controls a {
+  display: grid;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.calendar-controls .calendar-today {
+  padding-inline: 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.calendar-grid {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.calendar-weekdays,
+.calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.2rem;
+}
+
+.calendar-weekdays > div {
+  padding: 0.35rem 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.calendar-day {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: clamp(3.1rem, 10vw, 6.5rem);
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: var(--surface-raised);
+  padding: 0.4rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.calendar-day:not([data-in-month]) {
+  color: #9298aa;
+}
+
+.calendar-day[data-today] {
+  border: 2px solid var(--accent-strong);
+}
+
+.calendar-day[data-selected] {
+  border-color: #cfc3ff;
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px #cfc3ff;
+}
+
+.calendar-day-number {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.calendar-activity {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: auto;
+  color: #d6ccff;
+  font-size: 0.67rem;
+  font-weight: 750;
+}
+
+.calendar-activity > span {
+  width: 0.38rem;
+  height: 0.38rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--accent-strong);
+}
+
+.selected-day {
+  margin-top: 1.25rem;
+}
+
+.selected-day-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.selected-day-header h2 {
+  margin: 0;
+  font-size: clamp(1.25rem, 4vw, 1.8rem);
+}
+
+.compact-calendar {
+  padding: 0.85rem;
+}
+
+.compact-calendar .calendar-toolbar {
+  margin-bottom: 0.45rem;
+}
+
+.compact-calendar .calendar-toolbar h2 {
+  font-size: 0.95rem;
+}
+
+.compact-calendar .calendar-controls a {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+}
+
+.compact-calendar .calendar-day {
+  min-height: 2.3rem;
+  justify-content: center;
+  padding: 0.2rem;
+  text-align: center;
+}
+
+.compact-calendar .calendar-day-number {
+  font-size: 0.68rem;
+}
+
+.compact-calendar .calendar-activity {
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.15rem;
+  font-size: 0.55rem;
+}
+
+.compact-calendar .calendar-activity > span {
+  display: none;
+}
+
+.compact-calendar-link {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  padding: 0.75rem 0.25rem 0;
+  color: var(--accent-strong);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 .composer-shell {
   position: fixed;
   z-index: 40;
@@ -419,6 +612,16 @@ select {
   padding: 0.7rem;
   box-shadow: 0 20px 55px rgba(0, 0, 0, 0.48);
   backdrop-filter: blur(20px);
+}
+
+.composer-shell.composer-shell-inline {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: 100%;
+  margin-top: 1.25rem;
+  transform: none;
 }
 
 .composer-heading {
@@ -451,6 +654,90 @@ select {
   padding: 0.8rem;
   color: var(--ink);
   line-height: 1.45;
+}
+
+.occurrence-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.8fr) auto;
+  align-items: end;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.occurrence-controls > svg {
+  align-self: center;
+  color: var(--accent-strong);
+}
+
+.occurrence-controls label,
+.occurrence-editor label {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.64rem;
+  font-weight: 750;
+}
+
+.occurrence-controls input,
+.occurrence-editor input {
+  min-width: 0;
+  min-height: 2.55rem;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--surface-raised);
+  padding: 0.4rem;
+  color: var(--ink);
+  color-scheme: dark;
+  font-size: 0.75rem;
+}
+
+.occurrence-now {
+  min-height: 2.55rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  padding-inline: 0.7rem;
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.occurrence-context {
+  margin: 0.4rem 0 0;
+  color: #d6ccff;
+  font-size: 0.7rem;
+}
+
+.occurrence-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  padding: 1rem;
+}
+
+.occurrence-editor legend {
+  padding-inline: 0.35rem;
+  font-weight: 800;
+}
+
+.occurrence-editor p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.trace-time,
+.revision-occurrence {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 .composer-tools {
@@ -869,6 +1156,50 @@ select {
     left: calc(50% + 7.25rem);
     width: min(46rem, calc(100vw - 18rem));
     transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-month,
+  .compact-calendar {
+    padding-inline: 0.4rem;
+  }
+
+  .calendar-weekdays,
+  .calendar-grid {
+    gap: 0.12rem;
+  }
+
+  .calendar-day {
+    min-height: 3.05rem;
+    padding: 0.3rem;
+  }
+
+  .calendar-month .calendar-activity {
+    font-size: 0;
+  }
+
+  .selected-day-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .occurrence-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .occurrence-editor p {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 350px) {
+  .occurrence-controls {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.8fr);
+  }
+
+  .occurrence-now {
+    grid-column: 2 / -1;
   }
 }
 

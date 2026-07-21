@@ -21,17 +21,17 @@ export default defineConfig({
   projects: [
     {
       name: "mobile-320",
-      grepInvert: /@authenticated/,
+      grepInvert: /@authenticated|@calendar/,
       use: { viewport: { width: 320, height: 720 } },
     },
     {
       name: "mobile-390",
-      grepInvert: /@authenticated/,
+      grepInvert: /@authenticated|@calendar/,
       use: { viewport: { width: 390, height: 844 } },
     },
     {
       name: "tablet-768",
-      grepInvert: /@authenticated/,
+      grepInvert: /@authenticated|@calendar/,
       use: {
         browserName: "chromium",
         hasTouch: true,
@@ -41,17 +41,17 @@ export default defineConfig({
     },
     {
       name: "desktop-960",
-      grepInvert: /@authenticated/,
+      grepInvert: /@authenticated|@calendar/,
       use: { viewport: { width: 960, height: 900 } },
     },
     {
       name: "desktop-1200",
-      grepInvert: /@authenticated/,
+      grepInvert: /@authenticated|@calendar/,
       use: { viewport: { width: 1200, height: 900 } },
     },
     {
       name: "desktop-1440",
-      grepInvert: /@authenticated/,
+      grepInvert: /@authenticated|@calendar/,
       use: { viewport: { width: 1440, height: 1000 } },
     },
     {
@@ -67,6 +67,68 @@ export default defineConfig({
         hasTouch: true,
         isMobile: true,
         viewport: { width: 390, height: 844 },
+      },
+    },
+    {
+      name: "calendar-authenticated-desktop",
+      grep: /@calendar-journey/,
+      use: { viewport: { width: 1200, height: 900 } },
+    },
+    {
+      name: "calendar-authenticated-mobile",
+      grep: /@calendar-journey/,
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    {
+      name: "calendar-setup",
+      grep: /@calendar-setup/,
+      use: { viewport: { width: 390, height: 844 } },
+    },
+    {
+      name: "calendar-layout-320",
+      grep: /@calendar-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 320, height: 720 },
+      },
+    },
+    {
+      name: "calendar-layout-768",
+      grep: /@calendar-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 768, height: 1024 },
+      },
+    },
+    {
+      name: "calendar-layout-960",
+      grep: /@calendar-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 960, height: 900 },
+      },
+    },
+    {
+      name: "calendar-layout-1440",
+      grep: /@calendar-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 1440, height: 1000 },
       },
     },
   ],

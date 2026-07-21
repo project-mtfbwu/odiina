@@ -54,6 +54,10 @@ export function EntryCard({
             <span>Text</span>
           )}
           {entry.revision_number > 1 ? <span>Edited</span> : null}
+          {new Date(entry.created_at).getTime() >
+          new Date(entry.occurred_at).getTime() + 60_000 ? (
+            <span>Recorded later</span>
+          ) : null}
         </div>
         <TrashEntryButton
           entryId={entry.entry_id}

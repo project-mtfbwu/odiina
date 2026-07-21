@@ -7,8 +7,11 @@ import { FeedContextRail } from "@/components/feed-context-rail";
 import { FeedList } from "@/components/feed-list";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
 import { requireVerifiedUser } from "@/lib/auth/user";
-import { getFeedPage, getPreferences } from "@/lib/database/queries";
-import { groupFeedEntries } from "@/lib/feed/grouping";
+import {
+  getCalendarMonthActivity,
+  getFeedPage,
+  getPreferences,
+} from "@/lib/database/queries";
 import { localCivilDate } from "@/lib/validation/timezone";
 
 export const metadata: Metadata = { title: "Feed" };
@@ -28,7 +31,7 @@ export default async function FeedPage() {
 
   const csrf = cookieStore.get(csrfCookieName)?.value ?? "";
   const todayLocal = localCivilDate(new Date(), preferences.iana_timezone);
-  const groups = groupFeedEntries(feed.entries, todayLocal);
+  const activity = await getCalendarMonthActivity(todayLocal);
 
   return (
     <div className="feed-workspace">
@@ -53,7 +56,13 @@ export default async function FeedPage() {
         />
         <EntryComposer csrfToken={csrf} timezone={preferences.iana_timezone} />
       </div>
-      <FeedContextRail groups={groups} timezone={preferences.iana_timezone} />
+      <FeedContextRail
+        activity={activity}
+        selectedDate={todayLocal}
+        today={todayLocal}
+        weekStartsOn={preferences.week_starts_on}
+        timezone={preferences.iana_timezone}
+      />
     </div>
   );
 }

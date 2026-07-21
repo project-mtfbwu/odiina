@@ -5,11 +5,13 @@ import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/auth/server-client";
 import { decodeFeedCursor, encodeFeedCursor } from "@/lib/database/cursor";
 import type {
+  CalendarActivity,
   EntryDetail,
   EntryMedia,
   FeedEntry,
   UserPreferences,
 } from "@/lib/database/types";
+import { isValidCivilDate, monthStart } from "@/lib/calendar/civil-date";
 
 export const feedPageSize = 24;
 
@@ -17,6 +19,73 @@ export type FeedPage = {
   entries: FeedEntry[];
   nextCursor: string | null;
 };
+
+export type CalendarDayPage = FeedPage;
+
+export async function getCalendarMonthActivity(
+  selectedDate: string,
+): Promise<CalendarActivity[]> {
+  if (!isValidCivilDate(selectedDate)) throw new Error("calendar_date_invalid");
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema("app")
+    .rpc("calendar_month_activity", {
+      p_month_start: monthStart(selectedDate),
+    });
+  if (error) throw new Error("calendar_month_read_failed", { cause: error });
+  return (data ?? []).map(
+    (row: { occurred_local_date: string; entry_count: number | string }) => ({
+      occurred_local_date: String(row.occurred_local_date),
+      entry_count: Number(row.entry_count),
+    }),
+  );
+}
+
+export async function getCalendarDayPage(
+  selectedDate: string,
+  encodedCursor: string | null = null,
+): Promise<CalendarDayPage> {
+  if (!isValidCivilDate(selectedDate)) throw new Error("calendar_date_invalid");
+  const cursor = decodeFeedCursor(encodedCursor);
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema("app")
+    .rpc("calendar_day_entries", {
+      p_cursor_entry_id: cursor?.entryId ?? null,
+      p_cursor_occurred_at: cursor?.occurredAt ?? null,
+      p_limit: feedPageSize,
+      p_local_date: selectedDate,
+    });
+  if (error) throw new Error("calendar_day_read_failed", { cause: error });
+
+  const rawEntries = (data ?? []) as Omit<FeedEntry, "media">[];
+  const revisionIds = rawEntries.map((entry) => entry.current_revision_id);
+  const { data: mediaRows, error: mediaError } = revisionIds.length
+    ? await supabase
+        .schema("app")
+        .rpc("revision_media", { p_revision_ids: revisionIds })
+    : { data: [], error: null };
+  if (mediaError)
+    throw new Error("calendar_media_read_failed", { cause: mediaError });
+  const media = (mediaRows ?? []) as (EntryMedia & { revision_id: string })[];
+  const entries = rawEntries.map((entry) => ({
+    ...entry,
+    media: media
+      .filter((item) => item.revision_id === entry.current_revision_id)
+      .sort((a, b) => a.media_position - b.media_position),
+  }));
+  const lastEntry = entries.at(-1);
+  return {
+    entries,
+    nextCursor:
+      entries.length === feedPageSize && lastEntry
+        ? encodeFeedCursor({
+            entryId: lastEntry.entry_id,
+            occurredAt: lastEntry.occurred_at,
+          })
+        : null,
+  };
+}
 
 export async function getFeedPage(
   encodedCursor: string | null,

@@ -5,13 +5,20 @@ import { Button, Label, TextArea, TextField } from "react-aria-components";
 import { useRouter } from "next/navigation";
 
 import type { EntryMedia } from "@/lib/database/types";
-import { localCivilDate, utcOffsetMinutes } from "@/lib/validation/timezone";
+import {
+  localCivilDate,
+  localTime,
+  occurrenceFromLocalDateTime,
+} from "@/lib/validation/timezone";
 
 export function EntryEditor({
   entryId,
   currentRevisionId,
   initialBody,
   initialOccurredAt,
+  initialOccurredTimezone,
+  initialOccurredLocalDate,
+  initialOccurredUtcOffsetMinutes,
   timezone,
   csrfToken,
   currentMedia,
@@ -20,6 +27,9 @@ export function EntryEditor({
   currentRevisionId: string;
   initialBody: string;
   initialOccurredAt: string;
+  initialOccurredTimezone: string;
+  initialOccurredLocalDate: string;
+  initialOccurredUtcOffsetMinutes: number;
   timezone: string;
   csrfToken: string;
   currentMedia: EntryMedia[];
@@ -27,11 +37,25 @@ export function EntryEditor({
   const router = useRouter();
   const [body, setBody] = useState(initialBody);
   const [media, setMedia] = useState(currentMedia);
+  const initialOccurrenceDate = localCivilDate(
+    new Date(initialOccurredAt),
+    timezone,
+  );
+  const initialOccurrenceTime = localTime(
+    new Date(initialOccurredAt),
+    timezone,
+  );
+  const [occurrenceDate, setOccurrenceDate] = useState(initialOccurrenceDate);
+  const [occurrenceTime, setOccurrenceTime] = useState(initialOccurrenceTime);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const remaining = 100_000 - Array.from(body).length;
+  const occurrenceChanged =
+    occurrenceDate !== initialOccurrenceDate ||
+    occurrenceTime !== initialOccurrenceTime;
   const changed =
     body !== initialBody ||
+    occurrenceChanged ||
     media.map((item) => item.attachment_id).join(",") !==
       currentMedia.map((item) => item.attachment_id).join(",");
 
@@ -46,9 +70,15 @@ export function EntryEditor({
     }
     setBusy(true);
     setError(null);
-    const occurredAt = new Date(initialOccurredAt);
-
     try {
+      const occurrence = occurrenceChanged
+        ? occurrenceFromLocalDateTime(occurrenceDate, occurrenceTime, timezone)
+        : {
+            occurredAt: initialOccurredAt,
+            occurredLocalDate: initialOccurredLocalDate,
+            occurredTimezone: initialOccurredTimezone,
+            occurredUtcOffsetMinutes: initialOccurredUtcOffsetMinutes,
+          };
       const response = await fetch(`/api/entries/${entryId}`, {
         method: "PATCH",
         headers: {
@@ -58,11 +88,8 @@ export function EntryEditor({
         body: JSON.stringify({
           expectedCurrentRevisionId: currentRevisionId,
           bodyText: body,
-          occurredAt: occurredAt.toISOString(),
-          occurredTimezone: timezone,
-          occurredLocalDate: localCivilDate(occurredAt, timezone),
-          occurredUtcOffsetMinutes: utcOffsetMinutes(occurredAt, timezone),
-          changeReason: "edited",
+          ...occurrence,
+          changeReason: occurrenceChanged ? "occurrence_corrected" : "edited",
           attachmentIds: media.map((item) => item.attachment_id),
         }),
       });
@@ -112,6 +139,29 @@ export function EntryEditor({
           maxLength={100_000}
         />
       </TextField>
+      <fieldset className="occurrence-editor">
+        <legend>When this happened</legend>
+        <label>
+          <span>Occurrence date</span>
+          <input
+            type="date"
+            value={occurrenceDate}
+            onChange={(event) => setOccurrenceDate(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Occurrence time</span>
+          <input
+            type="time"
+            value={occurrenceTime}
+            onChange={(event) => setOccurrenceTime(event.target.value)}
+          />
+        </label>
+        <p>
+          Saving a different occurrence time creates immutable correction
+          evidence and may move this Entry to another Calendar day.
+        </p>
+      </fieldset>
       {media.length > 0 ? (
         <section className="mt-5" aria-labelledby="edit-media-heading">
           <h3 id="edit-media-heading" className="text-sm font-bold">

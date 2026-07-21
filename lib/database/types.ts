@@ -47,3 +47,8 @@ export type UserPreferences = {
   iana_timezone: string | null;
   week_starts_on: number;
 };
+
+export type CalendarActivity = {
+  occurred_local_date: string;
+  entry_count: number;
+};

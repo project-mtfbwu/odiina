@@ -54,7 +54,7 @@ export default async function EntryPage({
           </p>
           <h1 className="page-title">{current.occurred_local_date}</h1>
           <p className="page-description">
-            Revision {current.revision_number} ·{" "}
+            Happened{" "}
             <time dateTime={current.occurred_at}>
               {new Intl.DateTimeFormat("en", {
                 dateStyle: "medium",
@@ -62,6 +62,22 @@ export default async function EntryPage({
                 timeZone: current.occurred_timezone,
               }).format(new Date(current.occurred_at))}
             </time>
+            {" · "}Revision {current.revision_number}
+          </p>
+          <p className="trace-time">
+            Recorded{" "}
+            <time dateTime={entry.created_at}>
+              {new Intl.DateTimeFormat("en", {
+                dateStyle: "medium",
+                timeStyle: "short",
+                timeZone:
+                  preferences.iana_timezone ?? current.occurred_timezone,
+              }).format(new Date(entry.created_at))}
+            </time>
+            {new Date(entry.created_at).getTime() >
+            new Date(current.occurred_at).getTime() + 60_000
+              ? " · Recorded later"
+              : ""}
           </p>
         </div>
         {!editing && entry.lifecycle_state === "active" ? (
@@ -80,6 +96,9 @@ export default async function EntryPage({
           currentRevisionId={entry.current_revision_id}
           initialBody={current.body_text}
           initialOccurredAt={current.occurred_at}
+          initialOccurredTimezone={current.occurred_timezone}
+          initialOccurredLocalDate={current.occurred_local_date}
+          initialOccurredUtcOffsetMinutes={current.occurred_utc_offset_minutes}
           timezone={preferences.iana_timezone ?? current.occurred_timezone}
           csrfToken={csrf}
           currentMedia={current.media}
@@ -146,6 +165,22 @@ export default async function EntryPage({
               </div>
               <p className="mt-3 mb-0 text-sm leading-6 whitespace-pre-wrap">
                 {revision.body_text}
+              </p>
+              <p className="revision-occurrence">
+                Happened{" "}
+                <time dateTime={revision.occurred_at}>
+                  {new Intl.DateTimeFormat("en", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                    timeZone: revision.occurred_timezone,
+                  }).format(new Date(revision.occurred_at))}
+                </time>
+                {" · "}
+                {revision.change_reason === "occurrence_corrected"
+                  ? "Occurrence corrected"
+                  : revision.change_reason === "created"
+                    ? "Created"
+                    : "Content edited"}
               </p>
               {revision.media.length > 0 ? (
                 <div className="mt-3">

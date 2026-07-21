@@ -14,6 +14,7 @@ import {
 import { Upload } from "tus-js-client";
 
 import {
+  CalendarIcon,
   CameraIcon,
   ImageIcon,
   LocationIcon,
@@ -27,7 +28,11 @@ import {
   maximumEntryImages,
   maximumImageBytes,
 } from "@/lib/validation/media";
-import { localCivilDate, utcOffsetMinutes } from "@/lib/validation/timezone";
+import {
+  localCivilDate,
+  localTime,
+  occurrenceFromLocalDateTime,
+} from "@/lib/validation/timezone";
 
 const maximumLength = 100_000;
 const tusChunkSize = 6 * 1024 * 1024;
@@ -61,15 +66,26 @@ function humanBytes(value: number) {
 export function EntryComposer({
   csrfToken,
   timezone,
+  initialOccurrenceDate,
+  inline = false,
 }: {
   csrfToken: string;
   timezone: string;
+  initialOccurrenceDate?: string;
+  inline?: boolean;
 }) {
+  const initialNow = useMemo(() => new Date(), []);
+  const initialLocalDate =
+    initialOccurrenceDate ?? localCivilDate(initialNow, timezone);
   const chooseInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const activeUploads = useRef(new Map<string, Upload>());
   const previewUrls = useRef(new Set<string>());
   const [body, setBody] = useState("");
+  const [occurrenceDate, setOccurrenceDate] = useState(initialLocalDate);
+  const [occurrenceTime, setOccurrenceTime] = useState(
+    localTime(initialNow, timezone),
+  );
   const [images, setImages] = useState<SelectedImage[]>([]);
   const [clientRequestId, setClientRequestId] = useState(() =>
     crypto.randomUUID(),
@@ -82,6 +98,11 @@ export function EntryComposer({
   const remaining = maximumLength - Array.from(body).length;
   const valid = (body.trim().length > 0 || images.length > 0) && remaining >= 0;
   const hasFailedUploads = images.some((image) => image.stage === "Failed");
+  const today = localCivilDate(initialNow, timezone);
+  const isSelectedDay = occurrenceDate !== today;
+  const submitLabel = isSelectedDay
+    ? `Add to ${occurrenceDate}`
+    : "Add to today";
   const shortcut = useMemo(
     () =>
       typeof navigator !== "undefined" && /Mac/.test(navigator.platform)
@@ -326,16 +347,25 @@ export function EntryComposer({
     setBusy(true);
     setError(null);
     setSaved(false);
-    const occurredAt = new Date();
+    let occurrence;
+    try {
+      occurrence = occurrenceFromLocalDateTime(
+        occurrenceDate,
+        occurrenceTime,
+        timezone,
+      );
+    } catch {
+      setError(
+        "Choose a valid local date and time. Times skipped by a daylight-saving change cannot be used.",
+      );
+      return;
+    }
     try {
       if (images.length === 0) {
         await jsonRequest("/api/entries", {
           clientRequestId,
           bodyText: body,
-          occurredAt: occurredAt.toISOString(),
-          occurredTimezone: timezone,
-          occurredLocalDate: localCivilDate(occurredAt, timezone),
-          occurredUtcOffsetMinutes: utcOffsetMinutes(occurredAt, timezone),
+          ...occurrence,
         });
       } else {
         let draftEntryId: string | null = null;
@@ -358,10 +388,7 @@ export function EntryComposer({
           entryId: draftEntryId,
           bodyText: body,
           attachmentIds,
-          occurredAt: occurredAt.toISOString(),
-          occurredTimezone: timezone,
-          occurredLocalDate: localCivilDate(occurredAt, timezone),
-          occurredUtcOffsetMinutes: utcOffsetMinutes(occurredAt, timezone),
+          ...occurrence,
         });
       }
       for (const image of images) {
@@ -386,7 +413,12 @@ export function EntryComposer({
   }
 
   return (
-    <section className="composer-shell" aria-labelledby="capture-heading">
+    <section
+      className={["composer-shell", inline ? "composer-shell-inline" : null]
+        .filter(Boolean)
+        .join(" ")}
+      aria-labelledby="capture-heading"
+    >
       <div className="composer-heading">
         <div>
           <h2 id="capture-heading" className="m-0 text-base font-bold">
@@ -436,6 +468,49 @@ export function EntryComposer({
           }}
         />
       </TextField>
+
+      <div className="occurrence-controls" aria-label="When this happened">
+        <CalendarIcon className="size-5" />
+        <label>
+          <span>Occurrence date</span>
+          <input
+            type="date"
+            value={occurrenceDate}
+            onChange={(event) => {
+              setOccurrenceDate(event.target.value);
+              setSaved(false);
+            }}
+          />
+        </label>
+        <label>
+          <span>Occurrence time</span>
+          <input
+            type="time"
+            value={occurrenceTime}
+            onChange={(event) => {
+              setOccurrenceTime(event.target.value);
+              setSaved(false);
+            }}
+          />
+        </label>
+        <Button
+          className="occurrence-now"
+          onPress={() => {
+            const now = new Date();
+            setOccurrenceDate(localCivilDate(now, timezone));
+            setOccurrenceTime(localTime(now, timezone));
+            setSaved(false);
+          }}
+        >
+          Now
+        </Button>
+      </div>
+      {isSelectedDay ? (
+        <p className="occurrence-context" role="status">
+          This Entry will appear on {occurrenceDate}. Its actual recording time
+          remains unchanged.
+        </p>
+      ) : null}
 
       <div className="composer-tools">
         <MenuTrigger>
@@ -596,7 +671,7 @@ export function EntryComposer({
             className="composer-send-button"
             onPress={() => void submit()}
             isDisabled={!valid || busy}
-            aria-label="Add to today"
+            aria-label={submitLabel}
           >
             <SendIcon className="size-5" />
             {busy
