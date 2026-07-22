@@ -15,9 +15,9 @@ import {
 import {
   maximumTagsPerRevision,
   normalizeTagComparison,
-  normalizeTagDisplay,
   tagLabelSchema,
 } from "@/lib/validation/tag";
+import { tagQueryValue } from "@/lib/tags/inline-hashtags";
 
 type Suggestion = {
   tagId: string;
@@ -82,7 +82,7 @@ function TagPickerDialog({
             "content-type": "application/json",
             "x-odiina-csrf": csrfToken,
           },
-          body: JSON.stringify({ prefix: query }),
+          body: JSON.stringify({ prefix: tagQueryValue(query) }),
         });
         const result = (await response.json()) as {
           suggestions?: Suggestion[];
@@ -112,7 +112,7 @@ function TagPickerDialog({
   }, [csrfToken, query]);
 
   function addTag(value: string) {
-    const parsed = tagLabelSchema.safeParse(value);
+    const parsed = tagLabelSchema.safeParse(tagQueryValue(value));
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Choose a valid tag.");
       return;
@@ -139,7 +139,7 @@ function TagPickerDialog({
     setAnnouncement(`${tag} removed.`);
   }
 
-  const cleanQuery = normalizeTagDisplay(query);
+  const cleanQuery = tagQueryValue(query);
   const canCreate =
     cleanQuery.length > 0 &&
     !normalizedSelected.has(normalizeTagComparison(cleanQuery)) &&
@@ -184,10 +184,32 @@ function TagPickerDialog({
                 aria-describedby="tag-picker-help"
               >
                 <Label>Find or create a tag</Label>
-                <Input autoFocus maxLength={80} />
+                <Input
+                  autoFocus
+                  maxLength={80}
+                  placeholder="#work/oas"
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    const exact = suggestions.find(
+                      (suggestion) =>
+                        suggestion.normalizedName ===
+                        normalizeTagComparison(cleanQuery),
+                    );
+                    if (
+                      exact &&
+                      !normalizedSelected.has(exact.normalizedName)
+                    ) {
+                      addTag(exact.displayName);
+                    } else if (canCreate) {
+                      addTag(cleanQuery);
+                    }
+                  }}
+                />
               </TextField>
               <p id="tag-picker-help" className="field-help">
-                1–40 Unicode characters. Emoji tags are allowed.{" "}
+                Type # to find a tag; press Enter to select or create. Slash
+                paths form private collections. 1–40 Unicode characters.{" "}
                 {selected.length}/10 selected.
               </p>
 

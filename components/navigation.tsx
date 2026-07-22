@@ -10,9 +10,12 @@ import {
   ProfileIcon,
   SearchIcon,
   SettingsIcon,
+  TagIcon,
   TrashIcon,
 } from "@/components/icons";
 import { ProfileAvatar } from "@/components/profile-media";
+import { TagCollections } from "@/components/tag-collections";
+import type { TagCollection } from "@/lib/database/types";
 
 const activeItems = [
   { href: "/feed", label: "Feed", icon: FeedIcon },
@@ -28,11 +31,13 @@ export function Navigation({
   displayName,
   handle,
   avatarUrl,
+  tagCollections,
 }: {
   csrfToken: string;
   displayName: string;
   handle: string;
   avatarUrl: string | null;
+  tagCollections: TagCollection[];
 }) {
   const pathname = usePathname();
 
@@ -57,6 +62,13 @@ export function Navigation({
             aria-label="Trash"
           >
             <TrashIcon className="size-5" />
+          </Link>
+          <Link
+            href="/tags"
+            className="composer-icon-button"
+            aria-label="Browse private tags"
+          >
+            <TagIcon className="size-5" />
           </Link>
         </div>
       </header>
@@ -104,6 +116,8 @@ export function Navigation({
             })}
           </ul>
         </nav>
+
+        <TagCollections collections={tagCollections} collapsible />
 
         <div className="rail-footer">
           <Link className="capture-shortcut" href="/feed#capture-heading">

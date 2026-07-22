@@ -4,7 +4,7 @@ import { Navigation } from "@/components/navigation";
 import { OfflineNotice } from "@/components/offline-notice";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
 import { requireVerifiedUser } from "@/lib/auth/user";
-import { getPrivateProfile } from "@/lib/database/queries";
+import { getPrivateProfile, getTagCollections } from "@/lib/database/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,10 @@ export default async function ProductLayout({
   children: React.ReactNode;
 }) {
   await requireVerifiedUser();
-  const profile = await getPrivateProfile();
+  const [profile, tagCollections] = await Promise.all([
+    getPrivateProfile(),
+    getTagCollections(),
+  ]);
   const csrf = (await cookies()).get(csrfCookieName)?.value ?? "";
 
   return (
@@ -33,6 +36,7 @@ export default async function ProductLayout({
               ? `/api/profile/media/avatar?v=${encodeURIComponent(profile.updated_at)}`
               : null
           }
+          tagCollections={tagCollections}
         />
         <main className="app-main" id="main-content" tabIndex={-1}>
           <input

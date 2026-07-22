@@ -1064,7 +1064,7 @@ select {
 
   .rail-navigation {
     min-height: 0;
-    flex: 1;
+    flex: 0 0 auto;
   }
 
   .rail-navigation ul {
@@ -1161,6 +1161,114 @@ select {
     left: calc(50% + 7.25rem);
     width: min(46rem, calc(100vw - 18rem));
     transform: translateX(-50%);
+  }
+}
+
+.rail-tag-collections {
+  min-height: 0;
+  margin: 0.85rem 0;
+  border-block: 1px solid var(--line);
+  padding: 0.7rem 0 0.65rem;
+  overflow-y: auto;
+}
+
+.rail-tag-collections summary {
+  min-height: 2.75rem;
+  padding: 0.7rem;
+  color: var(--rail-muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.tag-collection-list {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-collection-list .tag-collection-list {
+  margin-left: 0.85rem;
+  border-left: 1px solid var(--line);
+  padding-left: 0.35rem;
+}
+
+.tag-collection-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  color: var(--rail-muted);
+  font-size: 0.76rem;
+  text-decoration: none;
+}
+
+.tag-collection-link span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-collection-link:hover,
+.tag-collection-link:focus-visible,
+.tag-collection-link[data-active] {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.tag-collection-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rail-tags-all {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  margin: 0.3rem 0.55rem 0;
+  color: var(--accent-strong);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.tag-collection-empty {
+  margin: 0.4rem 0.65rem;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.tag-collections-page {
+  padding: clamp(1rem, 3vw, 1.75rem);
+}
+
+.tag-collections-page > .tag-collection-list {
+  gap: 0.35rem;
+}
+
+.tag-collections-page .tag-collection-link {
+  font-size: 0.9rem;
+}
+
+@media (min-width: 768px) {
+  .rail-tag-collections {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 390px) {
+  .tag-collections-page {
+    padding: 0.75rem;
+  }
+
+  .tag-collection-list .tag-collection-list {
+    margin-left: 0.45rem;
+    padding-left: 0.2rem;
   }
 }
 

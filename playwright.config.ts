@@ -22,19 +22,19 @@ export default defineConfig({
     {
       name: "mobile-320",
       grepInvert:
-        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search/,
+        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search|@tags/,
       use: { viewport: { width: 320, height: 720 } },
     },
     {
       name: "mobile-390",
       grepInvert:
-        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search/,
+        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search|@tags/,
       use: { viewport: { width: 390, height: 844 } },
     },
     {
       name: "tablet-768",
       grepInvert:
-        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search/,
+        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search|@tags/,
       use: {
         browserName: "chromium",
         hasTouch: true,
@@ -45,19 +45,19 @@ export default defineConfig({
     {
       name: "desktop-960",
       grepInvert:
-        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search/,
+        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search|@tags/,
       use: { viewport: { width: 960, height: 900 } },
     },
     {
       name: "desktop-1200",
       grepInvert:
-        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search/,
+        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search|@tags/,
       use: { viewport: { width: 1200, height: 900 } },
     },
     {
       name: "desktop-1440",
       grepInvert:
-        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search/,
+        /@authenticated|@calendar|@profile|@photo-layout|@camera-capability|@voice|@video|@place|@search|@tags/,
       use: { viewport: { width: 1440, height: 1000 } },
     },
     {
@@ -411,6 +411,42 @@ export default defineConfig({
     {
       name: "search-journey-mobile",
       grep: /@search-journey/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    ...[320, 390, 768, 960, 1200, 1440].map((width) => ({
+      name: `tags-layout-${width}`,
+      grep: /@tags-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium" as const,
+        hasTouch: width <= 768,
+        isMobile: width <= 768,
+        storageState: "test-results/calendar-auth.json",
+        viewport: {
+          width,
+          height: width <= 390 ? 844 : width <= 768 ? 1024 : 1000,
+        },
+      },
+    })),
+    {
+      name: "tags-journey-desktop",
+      grep: /@tags-journey/,
+      dependencies: ["calendar-setup"],
+      use: {
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 1440, height: 1000 },
+      },
+    },
+    {
+      name: "tags-journey-mobile",
+      grep: /@tags-journey/,
       dependencies: ["calendar-setup"],
       use: {
         browserName: "chromium",

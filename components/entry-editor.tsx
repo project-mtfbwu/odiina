@@ -37,6 +37,10 @@ import {
 } from "@/lib/media/client-video-upload";
 import { formatVideoDuration } from "@/lib/media/video-recorder";
 import {
+  extractInlineHashtags,
+  mergeInlineHashtags,
+} from "@/lib/tags/inline-hashtags";
+import {
   acceptedAudioMimeTypes,
   acceptedImageMimeTypes,
   maximumAudioBytes,
@@ -50,6 +54,7 @@ import {
   minimumVideoDurationMs,
 } from "@/lib/validation/media";
 import type { PlaceSnapshotInput } from "@/lib/validation/place";
+import { normalizeTagComparison } from "@/lib/validation/tag";
 import {
   localCivilDate,
   localTime,
@@ -158,6 +163,9 @@ export function EntryEditor({
   const [place, setPlace] = useState<PlaceSnapshotInput | null>(initialPlace);
   const initialTags = currentTags.map((tag) => tag.display_name);
   const [tags, setTags] = useState<string[]>(initialTags);
+  const [ignoredInlineTags, setIgnoredInlineTags] = useState<Set<string>>(
+    () => new Set(),
+  );
   const initialOccurrenceDate = localCivilDate(
     new Date(initialOccurredAt),
     timezone,
@@ -698,7 +706,21 @@ export function EntryEditor({
           {error}
         </div>
       ) : null}
-      <TextField className="field mt-5" value={body} onChange={setBody}>
+      <TextField
+        className="field mt-5"
+        value={body}
+        onChange={(value) => {
+          const merged = mergeInlineHashtags(value, tags, ignoredInlineTags);
+          setBody(value);
+          setTags(merged.tags);
+          setIgnoredInlineTags(merged.activeIgnored);
+          if (merged.added.length) {
+            setAnnouncement(
+              `${merged.added.map((tag) => `#${tag}`).join(", ")} recognized as ${merged.added.length === 1 ? "a private tag" : "private tags"}.`,
+            );
+          }
+        }}
+      >
         <Label className="field-label">Entry text</Label>
         <TextArea
           id="edit-body"
@@ -834,6 +856,16 @@ export function EntryEditor({
                 className="tag-chip tag-chip-remove"
                 onPress={() => {
                   setTags((current) => current.filter((item) => item !== tag));
+                  if (
+                    extractInlineHashtags(body)
+                      .map(normalizeTagComparison)
+                      .includes(normalizeTagComparison(tag))
+                  ) {
+                    setIgnoredInlineTags(
+                      (current) =>
+                        new Set([...current, normalizeTagComparison(tag)]),
+                    );
+                  }
                   setAnnouncement(`${tag} removed from this unsaved revision.`);
                 }}
                 aria-label={`Remove ${tag}`}
@@ -849,7 +881,26 @@ export function EntryEditor({
           open={tagOpen}
           selected={tags}
           csrfToken={csrfToken}
-          onChange={setTags}
+          onChange={(nextTags) => {
+            const inlineKeys = new Set(
+              extractInlineHashtags(body).map(normalizeTagComparison),
+            );
+            const removed = tags
+              .filter(
+                (tag) =>
+                  !nextTags.some(
+                    (candidate) =>
+                      normalizeTagComparison(candidate) ===
+                      normalizeTagComparison(tag),
+                  ),
+              )
+              .map(normalizeTagComparison)
+              .filter((tag) => inlineKeys.has(tag));
+            setIgnoredInlineTags(
+              (current) => new Set([...current, ...removed]),
+            );
+            setTags(nextTags);
+          }}
           onClose={() => setTagOpen(false)}
         />
       </section>

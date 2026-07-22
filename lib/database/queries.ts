@@ -13,6 +13,7 @@ import type {
   FeedEntry,
   PrivateProfile,
   ProfileStatistics,
+  TagCollection,
   UserPreferences,
 } from "@/lib/database/types";
 import { isValidCivilDate, monthStart } from "@/lib/calendar/civil-date";
@@ -377,6 +378,30 @@ export async function getTagSuggestions(
   );
 }
 
+export async function getTagCollections(): Promise<TagCollection[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema("app")
+    .rpc("tag_collection_counts");
+  if (error) throw new Error("tag_collections_failed", { cause: error });
+  return (data ?? []).map(
+    (row: {
+      display_name: string;
+      normalized_name: string;
+      depth: number | string;
+      direct_entry_count: number | string;
+      collection_entry_count: number | string;
+      is_explicit: boolean;
+      has_children: boolean;
+    }) => ({
+      ...row,
+      depth: Number(row.depth),
+      direct_entry_count: Number(row.direct_entry_count),
+      collection_entry_count: Number(row.collection_entry_count),
+    }),
+  );
+}
+
 export async function getSearchPage(
   parameters: SearchParameters,
 ): Promise<SearchPage> {
@@ -390,6 +415,7 @@ export async function getSearchPage(
     p_from: parameters.from,
     p_has_place: parameters.hasPlace,
     p_include_trash: parameters.includeTrash,
+    p_include_tag_descendants: parameters.tagScope === "collection",
     p_limit: 20,
     p_media: parameters.media,
     p_query: parameters.query,

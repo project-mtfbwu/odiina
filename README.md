@@ -3,7 +3,8 @@
 Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
-This repository contains the local scaffold and the first eight MVP increments.
+This repository contains the local scaffold, the first eight MVP increments,
+and the separately certified Increment H.1 tag-collection completion.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -38,6 +39,9 @@ tagline or final brand assets have been selected.
 - Authenticated indexed Search across current text, tags and confirmed places
 - Date, tag, accepted-media, place and explicit Include Trash filters
 - URL-restorable filters and scope-bound cursor pagination
+- Bear-style inline hashtag recognition that preserves authored text
+- Nested private tag collections with current active Entry counts
+- Collapsible desktop tag navigation and an accessible mobile Tags route
 - Calendar recall using explicit occurrence dates
 - Private Profile identity with display name, canonical unique handle and bio
 - Private avatar/banner processing and owner-authorized delivery
@@ -109,6 +113,9 @@ documented in [increment-g-place-attachment.md](docs/implementation/increment-g-
 Increment H's tag normalization, indexed current-snapshot recall and privacy
 boundaries are documented in
 [increment-h-private-tags-search.md](docs/implementation/increment-h-private-tags-search.md).
+Increment H.1's inline-tag, nested-collection, count and navigation guarantees
+are documented in
+[increment-h1-bear-tag-collections.md](docs/implementation/increment-h1-bear-tag-collections.md).
 
 ## Local prerequisites
 

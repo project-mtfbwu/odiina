@@ -46,6 +46,10 @@ import {
 } from "@/lib/media/client-video-upload";
 import { formatVideoDuration } from "@/lib/media/video-recorder";
 import {
+  extractInlineHashtags,
+  mergeInlineHashtags,
+} from "@/lib/tags/inline-hashtags";
+import {
   acceptedAudioMimeTypes,
   acceptedImageMimeTypes,
   maximumAudioBytes,
@@ -59,6 +63,7 @@ import {
   minimumAudioDurationMs,
 } from "@/lib/validation/media";
 import type { PlaceSnapshotInput } from "@/lib/validation/place";
+import { normalizeTagComparison } from "@/lib/validation/tag";
 import {
   localCivilDate,
   localTime,
@@ -103,6 +108,9 @@ export function EntryComposer({
   const [video, setVideo] = useState<VideoDraft | null>(null);
   const [place, setPlace] = useState<PlaceSnapshotInput | null>(null);
   const [tags, setTags] = useState<string[]>([]);
+  const [ignoredInlineTags, setIgnoredInlineTags] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [cameraOpen, setCameraOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
@@ -140,6 +148,34 @@ export function EntryComposer({
         : "Ctrl Enter",
     [],
   );
+
+  function updateBody(value: string) {
+    const merged = mergeInlineHashtags(value, tags, ignoredInlineTags);
+    setBody(value);
+    setTags(merged.tags);
+    setIgnoredInlineTags(merged.activeIgnored);
+    if (merged.added.length) {
+      setStageAnnouncement(
+        `${merged.added.map((tag) => `#${tag}`).join(", ")} recognized as ${merged.added.length === 1 ? "a private tag" : "private tags"}. The authored text is unchanged.`,
+      );
+    }
+    setClientRequestId(crypto.randomUUID());
+    setSaved(false);
+    setError(null);
+  }
+
+  function removeTagAssociation(tag: string) {
+    setTags((current) => current.filter((item) => item !== tag));
+    if (
+      extractInlineHashtags(body)
+        .map(normalizeTagComparison)
+        .includes(normalizeTagComparison(tag))
+    ) {
+      setIgnoredInlineTags(
+        (current) => new Set([...current, normalizeTagComparison(tag)]),
+      );
+    }
+  }
 
   useEffect(() => {
     const uploads = activeUploads.current;
@@ -650,6 +686,7 @@ export function EntryComposer({
       setVideo(null);
       setPlace(null);
       setTags([]);
+      setIgnoredInlineTags(new Set());
       draftEntryId.current = null;
       setBody("");
       setClientRequestId(crypto.randomUUID());
@@ -692,12 +729,7 @@ export function EntryComposer({
       <TextField
         className="field"
         value={body}
-        onChange={(value) => {
-          setBody(value);
-          setClientRequestId(crypto.randomUUID());
-          setSaved(false);
-          setError(null);
-        }}
+        onChange={updateBody}
         isInvalid={remaining < 0}
       >
         <Label className="sr-only">
@@ -815,7 +847,7 @@ export function EntryComposer({
                 key={tag.toLocaleLowerCase()}
                 className="tag-chip tag-chip-remove"
                 onPress={() => {
-                  setTags((current) => current.filter((item) => item !== tag));
+                  removeTagAssociation(tag);
                   setClientRequestId(crypto.randomUUID());
                   setStageAnnouncement(
                     `${tag} removed from this unsaved Entry.`,
@@ -1016,6 +1048,26 @@ export function EntryComposer({
           selected={tags}
           csrfToken={csrfToken}
           onChange={(nextTags) => {
+            const removed = tags.filter(
+              (tag) =>
+                !nextTags.some(
+                  (candidate) =>
+                    normalizeTagComparison(candidate) ===
+                    normalizeTagComparison(tag),
+                ),
+            );
+            const inlineKeys = new Set(
+              extractInlineHashtags(body).map(normalizeTagComparison),
+            );
+            setIgnoredInlineTags(
+              (current) =>
+                new Set([
+                  ...current,
+                  ...removed
+                    .map(normalizeTagComparison)
+                    .filter((tag) => inlineKeys.has(tag)),
+                ]),
+            );
             setTags(nextTags);
             setClientRequestId(crypto.randomUUID());
             setSaved(false);

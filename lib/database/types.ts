@@ -40,6 +40,16 @@ export type EntryTag = {
   tag_position: number;
 };
 
+export type TagCollection = {
+  display_name: string;
+  normalized_name: string;
+  depth: number;
+  direct_entry_count: number;
+  collection_entry_count: number;
+  is_explicit: boolean;
+  has_children: boolean;
+};
+
 export type EntryPlace = {
   place_name: string | null;
   place_area: string | null;

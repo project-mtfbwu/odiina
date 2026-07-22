@@ -78,6 +78,9 @@ export default async function SearchPage({
       </header>
 
       <form className="search-form" action="/search" method="get" role="search">
+        {parameters.tagScope === "collection" ? (
+          <input type="hidden" name="tagScope" value="collection" />
+        ) : null}
         <div className="search-query-row">
           <label className="search-query-field">
             <span>Search private Entries</span>

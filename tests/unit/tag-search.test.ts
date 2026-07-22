@@ -94,6 +94,18 @@ describe("restorable private search parameters", () => {
     expect(parseSearchParameters({ tag: "Work" }).sort).toBe("newest");
   });
 
+  it("preserves explicit parent collection scope in bookmarkable URLs", () => {
+    const parameters = parseSearchParameters({
+      tag: "Work",
+      tagScope: "collection",
+    });
+    expect(parameters.tagScope).toBe("collection");
+    expect(searchParametersToQuery(parameters).get("tagScope")).toBe(
+      "collection",
+    );
+    expect(parseSearchParameters({ tagScope: "unknown" }).invalid).toBe(true);
+  });
+
   it("binds cursors to the exact query and filter state", () => {
     const parameters = parseSearchParameters({ q: "guitar", tag: "Practice" });
     const scope = searchScope(parameters);

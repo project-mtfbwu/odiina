@@ -29,6 +29,7 @@ export type SearchParameters = {
   from: string | null;
   to: string | null;
   tags: string[];
+  tagScope: "exact" | "collection";
   media: SearchMedia[];
   hasPlace: boolean;
   includeTrash: boolean;
@@ -78,6 +79,14 @@ export function parseSearchParameters(
     }
   }
   if (tags.length > 10) invalid = true;
+  const tagScope = raw.tagScope === "collection" ? "collection" : "exact";
+  if (
+    raw.tagScope &&
+    raw.tagScope !== "collection" &&
+    raw.tagScope !== "exact"
+  ) {
+    invalid = true;
+  }
 
   const media = many(raw.media).filter((value): value is SearchMedia => {
     const valid = searchMediaValues.includes(value as SearchMedia);
@@ -96,6 +105,7 @@ export function parseSearchParameters(
     from,
     to,
     tags: tags.slice(0, 10),
+    tagScope,
     media: [...new Set(media)].slice(0, 5),
     hasPlace: raw.hasPlace === "1",
     includeTrash: raw.includeTrash === "1",
@@ -113,6 +123,7 @@ export function searchScope(parameters: SearchParameters): string {
         from: parameters.from,
         to: parameters.to,
         tags: parameters.tags.map((tag) => tag.toLocaleLowerCase("und")).sort(),
+        tagScope: parameters.tagScope,
         media: [...parameters.media].sort(),
         hasPlace: parameters.hasPlace,
         includeTrash: parameters.includeTrash,
@@ -159,6 +170,9 @@ export function searchParametersToQuery(
   if (parameters.from) result.set("from", parameters.from);
   if (parameters.to) result.set("to", parameters.to);
   for (const tag of parameters.tags) result.append("tag", tag);
+  if (parameters.tagScope === "collection") {
+    result.set("tagScope", "collection");
+  }
   for (const media of parameters.media) result.append("media", media);
   if (parameters.hasPlace) result.set("hasPlace", "1");
   if (parameters.includeTrash) result.set("includeTrash", "1");
