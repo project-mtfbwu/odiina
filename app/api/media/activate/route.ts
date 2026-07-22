@@ -27,15 +27,12 @@ export async function POST(request: NextRequest) {
       p_occurred_timezone: input.occurredTimezone,
       p_occurred_local_date: input.occurredLocalDate,
       p_occurred_utc_offset_minutes: input.occurredUtcOffsetMinutes,
+      p_place: input.place ?? null,
+      p_tags: input.tags,
     };
-    const { data, error } = input.place
-      ? await context.supabase.schema("app").rpc("activate_media_entry_place", {
-          ...parameters,
-          p_place: input.place,
-        })
-      : await context.supabase
-          .schema("app")
-          .rpc("activate_media_entry", parameters);
+    const { data, error } = await context.supabase
+      .schema("app")
+      .rpc("activate_media_entry_tagged", parameters);
     if (error) throw error;
     return context.applyAuthState(
       NextResponse.json((data as unknown[] | null)?.[0], { status: 201 }),

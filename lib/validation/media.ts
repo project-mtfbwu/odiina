@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { isOccurrenceConsistent } from "@/lib/validation/timezone";
 import { placeSnapshotSchema } from "@/lib/validation/place";
+import { tagListSchema } from "@/lib/validation/tag";
 
 export const acceptedImageMimeTypes = [
   "image/jpeg",
@@ -99,6 +100,7 @@ export const activateMediaEntrySchema = z
     occurredLocalDate: z.string().date(),
     occurredUtcOffsetMinutes: z.number().int().min(-840).max(840),
     place: placeSnapshotSchema.optional(),
+    tags: tagListSchema.default([]),
   })
   .refine(isOccurrenceConsistent, {
     message: "Choose a valid occurrence date and time.",

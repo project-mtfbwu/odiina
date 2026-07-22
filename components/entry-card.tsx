@@ -10,6 +10,8 @@ import {
   VideoIcon,
 } from "@/components/icons";
 import { PlaceCard } from "@/components/place-card";
+import { RestoreEntryButton } from "@/components/restore-entry-button";
+import { TagChips } from "@/components/tag-chips";
 import { TrashEntryButton } from "@/components/trash-entry-button";
 import { VoicePlayer } from "@/components/voice-player";
 import { VideoPlayer } from "@/components/video-player";
@@ -27,11 +29,13 @@ export function EntryCard({
   csrfToken,
   displayName,
   onRemoved,
+  onRestored,
 }: {
   entry: FeedEntry;
   csrfToken: string;
   displayName: string;
   onRemoved?: (entryId: string) => void;
+  onRestored?: (entryId: string) => void;
 }) {
   const imageCount = entry.media.filter(
     (item) => item.media_kind === "image",
@@ -84,16 +88,19 @@ export function EntryCard({
             <span>Text</span>
           ) : null}
           {entry.revision_number > 1 ? <span>Edited</span> : null}
+          {entry.lifecycle_state === "trashed" ? <span>In Trash</span> : null}
           {new Date(entry.created_at).getTime() >
           new Date(entry.occurred_at).getTime() + 60_000 ? (
             <span>Recorded later</span>
           ) : null}
         </div>
-        <TrashEntryButton
-          entryId={entry.entry_id}
-          csrfToken={csrfToken}
-          onRemoved={onRemoved}
-        />
+        {entry.lifecycle_state !== "trashed" ? (
+          <TrashEntryButton
+            entryId={entry.entry_id}
+            csrfToken={csrfToken}
+            onRemoved={onRemoved}
+          />
+        ) : null}
       </div>
       <Link
         href={`/entries/${entry.entry_id}`}
@@ -122,6 +129,11 @@ export function EntryCard({
         </span>
       </Link>
       {entry.place ? <PlaceCard place={entry.place} compact /> : null}
+      <TagChips
+        tags={entry.tags}
+        compact
+        includeTrash={entry.lifecycle_state === "trashed"}
+      />
       {entry.media.length > 0 ? (
         <div className="entry-media">
           <EntryMedia media={entry.media} compact />
@@ -134,12 +146,20 @@ export function EntryCard({
           <LockIcon className="size-4" />
           Private · Revision {entry.revision_number}
         </span>
-        <Link
-          href={`/entries/${entry.entry_id}?mode=edit`}
-          className="inline-flex min-h-10 items-center rounded-full px-3 text-sm font-bold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)]"
-        >
-          Edit Entry
-        </Link>
+        {entry.lifecycle_state === "trashed" ? (
+          <RestoreEntryButton
+            entryId={entry.entry_id}
+            csrfToken={csrfToken}
+            onRestored={() => onRestored?.(entry.entry_id)}
+          />
+        ) : (
+          <Link
+            href={`/entries/${entry.entry_id}?mode=edit`}
+            className="inline-flex min-h-10 items-center rounded-full px-3 text-sm font-bold text-[var(--accent-strong)] hover:bg-[var(--accent-soft)]"
+          >
+            Edit Entry
+          </Link>
+        )}
       </div>
     </article>
   );

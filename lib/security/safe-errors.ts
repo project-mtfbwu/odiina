@@ -26,6 +26,10 @@ const safeErrorMap: Record<string, string> = {
     "An Entry can contain up to five photos and either one voice note or one video.",
   odiina_place_invalid:
     "Review the place name, privacy level and selected coordinates.",
+  odiina_tag_invalid: "Use a tag with 1–40 characters and no controls.",
+  odiina_tag_limit: "An Entry can have up to 10 tags.",
+  odiina_tag_duplicate: "Remove the duplicate tag and try again.",
+  odiina_search_invalid: "Check the private search filters and try again.",
 };
 
 export function safeErrorMessage(code: string | undefined): string {

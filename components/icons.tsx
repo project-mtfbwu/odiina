@@ -34,6 +34,24 @@ export function FeedIcon(props: IconProps) {
   );
 }
 
+export function SearchIcon(props: IconProps) {
+  return (
+    <IconFrame {...props}>
+      <circle cx="10.5" cy="10.5" r="6.5" {...strokeProps} />
+      <path d="m15.5 15.5 5 5" {...strokeProps} />
+    </IconFrame>
+  );
+}
+
+export function TagIcon(props: IconProps) {
+  return (
+    <IconFrame {...props}>
+      <path d="M4 4h7l9 9-7 7-9-9V4Z" {...strokeProps} />
+      <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+    </IconFrame>
+  );
+}
+
 export function CalendarIcon(props: IconProps) {
   return (
     <IconFrame {...props}>

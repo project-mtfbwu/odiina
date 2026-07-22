@@ -33,6 +33,13 @@ export type EntryVideoMedia = {
 
 export type EntryMedia = EntryImageMedia | EntryAudioMedia | EntryVideoMedia;
 
+export type EntryTag = {
+  tag_id: string;
+  display_name: string;
+  normalized_name: string;
+  tag_position: number;
+};
+
 export type EntryPlace = {
   place_name: string | null;
   place_area: string | null;
@@ -61,6 +68,10 @@ export type FeedEntry = {
   updated_at: string;
   media: EntryMedia[];
   place: EntryPlace | null;
+  tags: EntryTag[];
+  lifecycle_state?: "active" | "trashed";
+  trashed_at?: string | null;
+  result_rank?: number;
 };
 
 export type EntryRevision = {
@@ -75,6 +86,7 @@ export type EntryRevision = {
   created_at: string;
   media: EntryMedia[];
   place: EntryPlace | null;
+  tags: EntryTag[];
 };
 
 export type EntryDetail = {
@@ -117,5 +129,6 @@ export type ProfileStatistics = {
   voice_entries: number;
   video_entries: number;
   place_entries: number;
+  tagged_entries: number;
   edited_entries: number;
 };

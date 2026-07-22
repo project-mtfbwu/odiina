@@ -35,6 +35,7 @@ export default async function ProfilePage({
     { value: statistics.voice_entries, label: "Voice Entries" },
     { value: statistics.video_entries, label: "Video Entries" },
     { value: statistics.place_entries, label: "Place Entries" },
+    { value: statistics.tagged_entries, label: "Tagged Entries" },
     { value: statistics.edited_entries, label: "Edited Entries" },
   ];
   return (

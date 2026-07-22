@@ -3,7 +3,7 @@
 Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
-This repository contains the local scaffold and the first seven MVP increments.
+This repository contains the local scaffold and the first eight MVP increments.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -34,6 +34,10 @@ tagline or final brand assets have been selected.
 - Optional private place labels on Entries, including place-only Entries
 - Explicit one-time device location with label-only, approximate or exact privacy
 - Immutable per-revision place snapshots and explicit all-history redaction
+- Private per-user tags with Unicode normalization and immutable revision membership
+- Authenticated indexed Search across current text, tags and confirmed places
+- Date, tag, accepted-media, place and explicit Include Trash filters
+- URL-restorable filters and scope-bound cursor pagination
 - Calendar recall using explicit occurrence dates
 - Private Profile identity with display name, canonical unique handle and bio
 - Private avatar/banner processing and owner-authorized delivery
@@ -41,8 +45,8 @@ tagline or final brand assets have been selected.
 - Honest loading, empty, error and offline states
 - Repository migration, seed data, pgTAP, unit and browser-test scaffolds
 
-AI, OpenAI calls, sharing, reports, provider place search, nearby discovery,
-maps, tags, projects, charts,
+AI, OpenAI calls, semantic search, sharing, reports, provider place search,
+nearby discovery, maps, projects, charts,
 transcription, captions and private-content service-worker caching are
 deliberately absent. Their feature flags are false.
 
@@ -102,6 +106,9 @@ Increment F's video limits, consent, processing, playback and browser gates are
 documented in [increment-f-video-capture.md](docs/implementation/increment-f-video-capture.md).
 Increment G's place privacy, coordinate-reduction and redaction policies are
 documented in [increment-g-place-attachment.md](docs/implementation/increment-g-place-attachment.md).
+Increment H's tag normalization, indexed current-snapshot recall and privacy
+boundaries are documented in
+[increment-h-private-tags-search.md](docs/implementation/increment-h-private-tags-search.md).
 
 ## Local prerequisites
 
@@ -192,6 +199,7 @@ corepack pnpm test:db
 corepack pnpm test:scanner
 corepack pnpm test:audio
 corepack pnpm test:video
+Get-Content -Raw scripts/certify-search-performance.sql | docker exec -i supabase_db_odiina psql -U postgres -d postgres
 corepack pnpm test:e2e
 corepack pnpm test:a11y
 corepack pnpm build

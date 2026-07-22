@@ -23,14 +23,12 @@ export async function createEntry(
     p_occurred_local_date: input.occurredLocalDate,
     p_occurred_timezone: input.occurredTimezone,
     p_occurred_utc_offset_minutes: input.occurredUtcOffsetMinutes,
+    p_place: input.place ?? null,
+    p_tags: input.tags,
   };
-  const { data, error } =
-    input.place === undefined
-      ? await supabase.schema("app").rpc("create_entry", parameters)
-      : await supabase.schema("app").rpc("create_entry_place", {
-          ...parameters,
-          p_place: input.place,
-        });
+  const { data, error } = await supabase
+    .schema("app")
+    .rpc("create_entry_tagged", parameters);
 
   if (error) {
     throw error;
@@ -56,20 +54,13 @@ export async function reviseEntry(
     p_occurred_local_date: input.occurredLocalDate,
     p_occurred_timezone: input.occurredTimezone,
     p_occurred_utc_offset_minutes: input.occurredUtcOffsetMinutes,
+    p_attachment_ids: input.attachmentIds ?? [],
+    p_place: input.place ?? null,
+    p_tags: input.tags,
   };
-  const { data, error } =
-    input.place !== undefined
-      ? await supabase.schema("app").rpc("revise_entry_place", {
-          ...parameters,
-          p_attachment_ids: input.attachmentIds ?? [],
-          p_place: input.place,
-        })
-      : input.attachmentIds === undefined
-        ? await supabase.schema("app").rpc("revise_entry", parameters)
-        : await supabase.schema("app").rpc("revise_entry_media", {
-            ...parameters,
-            p_attachment_ids: input.attachmentIds,
-          });
+  const { data, error } = await supabase
+    .schema("app")
+    .rpc("revise_entry_tagged", parameters);
 
   if (error) {
     throw error;

@@ -3,7 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { verifiedRequestClient } from "@/lib/auth/request-user";
 import { feedPageSize } from "@/lib/database/queries";
 import { decodeFeedCursor, encodeFeedCursor } from "@/lib/database/cursor";
-import type { EntryMedia, EntryPlace, FeedEntry } from "@/lib/database/types";
+import type {
+  EntryMedia,
+  EntryPlace,
+  EntryTag,
+  FeedEntry,
+} from "@/lib/database/types";
 import { configurationUnavailableResponse } from "@/lib/security/http-responses";
 
 export async function GET(request: NextRequest) {
@@ -32,7 +37,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const rawEntries = (data ?? []) as Omit<FeedEntry, "media" | "place">[];
+  const rawEntries = (data ?? []) as Omit<
+    FeedEntry,
+    "media" | "place" | "tags"
+  >[];
   const revisionIds = rawEntries.map((entry) => entry.current_revision_id);
   const { data: mediaData, error: mediaError } = revisionIds.length
     ? await context.supabase
@@ -60,6 +68,17 @@ export async function GET(request: NextRequest) {
   const places = (placeData ?? []) as (EntryPlace & {
     revision_id: string;
   })[];
+  const { data: tagData, error: tagError } = revisionIds.length
+    ? await context.supabase
+        .schema("app")
+        .rpc("revision_tags", { p_revision_ids: revisionIds })
+    : { data: [], error: null };
+  if (tagError) {
+    return context.applyAuthState(
+      NextResponse.json({ error: "feed_unavailable" }, { status: 503 }),
+    );
+  }
+  const tags = (tagData ?? []) as (EntryTag & { revision_id: string })[];
   const entries: FeedEntry[] = rawEntries.map((entry) => ({
     ...entry,
     media: media
@@ -70,6 +89,9 @@ export async function GET(request: NextRequest) {
         (item) =>
           item.revision_id === entry.current_revision_id && !item.redacted_at,
       ) ?? null,
+    tags: tags
+      .filter((item) => item.revision_id === entry.current_revision_id)
+      .sort((a, b) => a.tag_position - b.tag_position),
   }));
   const last = entries.at(-1);
   return context.applyAuthState(

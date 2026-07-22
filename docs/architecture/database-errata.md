@@ -163,3 +163,29 @@ privacy exception is `app.redact_entry_places(uuid)`, which clears location
 content across all owned revisions but preserves revision identity and records
 `redacted_at`. This exceptional behavior is narrowly authorized and surfaced
 through a destructive confirmation, not the normal editor.
+
+# Increment H extension — private tags and current search snapshots
+
+Migration `202607260001_private_tags_search.sql` adds the forced-RLS
+`user_tags`, `entry_revision_tags`, and `entry_search_documents` relations.
+Tags are unique only by `(user_id, normalized_name)` and revision membership is
+bound by the exact owner/Entry/revision composite key. Ordinary authenticated
+SQL cannot mutate or delete historical membership. The catalog follows account
+deletion with `ON DELETE CASCADE`; catalog rows referenced by immutable history
+remain protected from ordinary deletion.
+
+The current search document is derived, not evidence history. It points to the
+exact current revision and is refreshed transactionally for revision changes,
+tag membership, accepted media state, Trash/restore, and place redaction. The
+migration backfills only current revisions and invents no tags. Historical
+removed text/tags and redacted place values never remain in current search.
+
+`create_entry_tagged`, `activate_media_entry_tagged`, and
+`revise_entry_tagged` wrap the certified mutation functions so command receipt,
+idempotency, concurrency, media, place, and ownership rules remain intact.
+`search_entries` and `tag_suggestions` are bounded owner-only reads. Their
+constrained owner has no `BYPASSRLS`, every definer uses an empty search path,
+and `PUBLIC`/`anon` execution is revoked. `pg_trgm` is installed in the existing
+extensions schema; `unaccent` is intentionally not installed because silently
+removing meaningful international distinctions is outside the approved
+normalization policy.

@@ -6,8 +6,9 @@ import { Button, Label, TextArea, TextField } from "react-aria-components";
 import type { Upload } from "tus-js-client";
 
 import { CameraCapture } from "@/components/camera-capture";
-import { LocationIcon } from "@/components/icons";
+import { LocationIcon, TagIcon } from "@/components/icons";
 import { PlacePicker } from "@/components/place-picker";
+import { TagPicker } from "@/components/tag-picker";
 import { VideoCapture } from "@/components/video-capture";
 import { VideoPlayer } from "@/components/video-player";
 import { VoiceCapture } from "@/components/voice-capture";
@@ -17,6 +18,7 @@ import type {
   EntryImageMedia,
   EntryMedia,
   EntryPlace,
+  EntryTag,
   EntryVideoMedia,
 } from "@/lib/database/types";
 import {
@@ -118,6 +120,7 @@ export function EntryEditor({
   csrfToken,
   currentMedia,
   currentPlace,
+  currentTags,
 }: {
   entryId: string;
   currentRevisionId: string;
@@ -130,6 +133,7 @@ export function EntryEditor({
   csrfToken: string;
   currentMedia: EntryMedia[];
   currentPlace: EntryPlace | null;
+  currentTags: EntryTag[];
 }) {
   const router = useRouter();
   const chooseInput = useRef<HTMLInputElement>(null);
@@ -152,6 +156,8 @@ export function EntryEditor({
   );
   const initialPlace = editablePlace(currentPlace);
   const [place, setPlace] = useState<PlaceSnapshotInput | null>(initialPlace);
+  const initialTags = currentTags.map((tag) => tag.display_name);
+  const [tags, setTags] = useState<string[]>(initialTags);
   const initialOccurrenceDate = localCivilDate(
     new Date(initialOccurredAt),
     timezone,
@@ -167,6 +173,7 @@ export function EntryEditor({
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
   const [placeOpen, setPlaceOpen] = useState(false);
+  const [tagOpen, setTagOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const remaining = 100_000 - Array.from(body).length;
@@ -202,7 +209,8 @@ export function EntryEditor({
       initialImages.map((item) => item.attachment_id).join(",") ||
     voiceIdentity !== (initialVoice?.attachment_id ?? "") ||
     videoIdentity !== (initialVideo?.attachment_id ?? "") ||
-    JSON.stringify(place) !== JSON.stringify(initialPlace);
+    JSON.stringify(place) !== JSON.stringify(initialPlace) ||
+    JSON.stringify(tags) !== JSON.stringify(initialTags);
 
   useEffect(() => {
     const uploads = activeUploads.current;
@@ -652,6 +660,7 @@ export function EntryEditor({
           changeReason: occurrenceChanged ? "occurrence_corrected" : "edited",
           attachmentIds,
           place,
+          tags,
         }),
       });
       const result = (await response.json()) as { message?: string };
@@ -681,7 +690,7 @@ export function EntryEditor({
         Edit Entry
       </h2>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        Odiina preserves the current version. Text, time, media and place
+        Odiina preserves the current version. Text, time, media, place and tag
         changes create a new immutable revision.
       </p>
       {error ? (
@@ -787,6 +796,61 @@ export function EntryEditor({
             setPlace(null);
             setAnnouncement("Place removed from this unsaved revision.");
           }}
+        />
+      </section>
+
+      <section
+        className="edit-place-section"
+        aria-labelledby="edit-tags-heading"
+      >
+        <div className="image-preview-summary">
+          <div>
+            <h3 id="edit-tags-heading" className="m-0 text-sm font-bold">
+              Private tags
+            </h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Earlier revisions keep their own tag evidence. {tags.length}/10
+              selected.
+            </p>
+          </div>
+          <Button
+            className="button button-secondary"
+            onPress={() => setTagOpen(true)}
+            isDisabled={busy}
+          >
+            <TagIcon className="size-5" />{" "}
+            {tags.length ? "Change tags" : "Add tags"}
+          </Button>
+        </div>
+        {tags.length ? (
+          <div
+            className="tag-picker-selected mt-3"
+            role="status"
+            aria-label="Tags in this revision"
+          >
+            {tags.map((tag) => (
+              <Button
+                key={tag.toLocaleLowerCase()}
+                className="tag-chip tag-chip-remove"
+                onPress={() => {
+                  setTags((current) => current.filter((item) => item !== tag));
+                  setAnnouncement(`${tag} removed from this unsaved revision.`);
+                }}
+                aria-label={`Remove ${tag}`}
+              >
+                {tag} <span aria-hidden="true">×</span>
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <p className="empty-inline">No tags in this revision.</p>
+        )}
+        <TagPicker
+          open={tagOpen}
+          selected={tags}
+          csrfToken={csrfToken}
+          onChange={setTags}
+          onClose={() => setTagOpen(false)}
         />
       </section>
 

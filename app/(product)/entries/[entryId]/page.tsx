@@ -7,6 +7,7 @@ import { EntryMedia } from "@/components/entry-media";
 import { PlaceCard } from "@/components/place-card";
 import { PlaceRedactionButton } from "@/components/place-redaction-button";
 import { RestoreEntryButton } from "@/components/restore-entry-button";
+import { TagChips } from "@/components/tag-chips";
 import { VoicePlayer } from "@/components/voice-player";
 import { VideoPlayer } from "@/components/video-player";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
@@ -107,6 +108,7 @@ export default async function EntryPage({
           csrfToken={csrf}
           currentMedia={current.media}
           currentPlace={current.place}
+          currentTags={current.tags}
         />
       ) : (
         <article className="panel p-5 sm:p-7">
@@ -118,6 +120,14 @@ export default async function EntryPage({
           {current.place ? (
             <div className={current.body_text ? "mt-5" : ""}>
               <PlaceCard place={current.place} />
+            </div>
+          ) : null}
+          {current.tags.length ? (
+            <div className="mt-5">
+              <TagChips
+                tags={current.tags}
+                includeTrash={entry.lifecycle_state === "trashed"}
+              />
             </div>
           ) : null}
           {current.media.length > 0 ? (
@@ -187,6 +197,11 @@ export default async function EntryPage({
               {revision.place ? (
                 <div className="mt-3">
                   <PlaceCard place={revision.place} compact />
+                </div>
+              ) : null}
+              {revision.tags.length ? (
+                <div className="mt-3">
+                  <TagChips tags={revision.tags} searchable={false} />
                 </div>
               ) : null}
               <p className="revision-occurrence">

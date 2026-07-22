@@ -8,6 +8,7 @@ import {
   FeedIcon,
   PlusIcon,
   ProfileIcon,
+  SearchIcon,
   SettingsIcon,
   TrashIcon,
 } from "@/components/icons";
@@ -16,6 +17,7 @@ import { ProfileAvatar } from "@/components/profile-media";
 const activeItems = [
   { href: "/feed", label: "Feed", icon: FeedIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
+  { href: "/search", label: "Search", icon: SearchIcon },
   { href: "/profile", label: "Profile", icon: ProfileIcon },
   { href: "/trash", label: "Trash", icon: TrashIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
@@ -42,6 +44,13 @@ export function Navigation({
         </Link>
         <div className="flex items-center gap-2">
           <span className="private-badge">Private timeline</span>
+          <Link
+            href="/search"
+            className="composer-icon-button"
+            aria-label="Search private Entries"
+          >
+            <SearchIcon className="size-5" />
+          </Link>
           <Link
             href="/trash"
             className="composer-icon-button"

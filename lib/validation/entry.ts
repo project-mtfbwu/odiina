@@ -5,6 +5,7 @@ import {
   isValidIanaTimezone,
 } from "@/lib/validation/timezone";
 import { placeSnapshotSchema } from "@/lib/validation/place";
+import { tagListSchema } from "@/lib/validation/tag";
 
 const occurrenceFields = {
   occurredAt: z.iso.datetime({ offset: true }),
@@ -23,6 +24,7 @@ export const createEntrySchema = z
     clientRequestId: z.uuid(),
     bodyText: z.string().trim().max(100_000),
     place: placeSnapshotSchema.optional(),
+    tags: tagListSchema.default([]),
   })
   .refine(({ bodyText, place }) => bodyText.length > 0 || Boolean(place), {
     message: "Add text or a place.",
@@ -42,6 +44,7 @@ export const reviseEntrySchema = z
       .refine((ids) => new Set(ids).size === ids.length)
       .optional(),
     place: placeSnapshotSchema.nullable().optional(),
+    tags: tagListSchema.default([]),
     changeReason: z.enum(["edited", "occurrence_corrected"]),
   })
   .refine(isOccurrenceConsistent, {

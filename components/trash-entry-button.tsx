@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Button,
   Dialog,
@@ -19,6 +20,7 @@ export function TrashEntryButton({
   csrfToken: string;
   onRemoved?: (entryId: string) => void;
 }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +36,11 @@ export function TrashEntryButton({
       if (!response.ok) {
         throw new Error(result.message ?? "Could not move the Entry to Trash.");
       }
-      onRemoved?.(entryId);
+      if (onRemoved) {
+        onRemoved(entryId);
+      } else {
+        router.refresh();
+      }
       close();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Try again.");

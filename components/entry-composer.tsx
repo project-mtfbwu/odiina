@@ -15,6 +15,7 @@ import type { Upload } from "tus-js-client";
 
 import { CameraCapture } from "@/components/camera-capture";
 import { PlacePicker } from "@/components/place-picker";
+import { TagPicker } from "@/components/tag-picker";
 import { VideoCapture } from "@/components/video-capture";
 import { VoiceCapture } from "@/components/voice-capture";
 import {
@@ -25,6 +26,7 @@ import {
   MicrophoneIcon,
   PlusIcon,
   SendIcon,
+  TagIcon,
   VideoIcon,
 } from "@/components/icons";
 import {
@@ -100,10 +102,12 @@ export function EntryComposer({
   const [audio, setAudio] = useState<AudioDraft | null>(null);
   const [video, setVideo] = useState<VideoDraft | null>(null);
   const [place, setPlace] = useState<PlaceSnapshotInput | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
   const [placeOpen, setPlaceOpen] = useState(false);
+  const [tagOpen, setTagOpen] = useState(false);
   const [clientRequestId, setClientRequestId] = useState(() =>
     crypto.randomUUID(),
   );
@@ -541,6 +545,7 @@ export function EntryComposer({
         await jsonRequest("/api/entries", {
           clientRequestId,
           bodyText: body,
+          tags,
           ...(place ? { place } : {}),
           ...occurrence,
         });
@@ -623,6 +628,7 @@ export function EntryComposer({
           entryId: activeDraftId,
           bodyText: body,
           attachmentIds,
+          tags,
           ...(place ? { place } : {}),
           ...occurrence,
         });
@@ -643,6 +649,7 @@ export function EntryComposer({
       }
       setVideo(null);
       setPlace(null);
+      setTags([]);
       draftEntryId.current = null;
       setBody("");
       setClientRequestId(crypto.randomUUID());
@@ -799,6 +806,36 @@ export function EntryComposer({
         </div>
       ) : null}
 
+      {tags.length ? (
+        <div className="tag-draft" role="status" aria-label="Selected tags">
+          <TagIcon className="size-5" />
+          <div className="tag-picker-selected">
+            {tags.map((tag) => (
+              <Button
+                key={tag.toLocaleLowerCase()}
+                className="tag-chip tag-chip-remove"
+                onPress={() => {
+                  setTags((current) => current.filter((item) => item !== tag));
+                  setClientRequestId(crypto.randomUUID());
+                  setStageAnnouncement(
+                    `${tag} removed from this unsaved Entry.`,
+                  );
+                }}
+                aria-label={`Remove ${tag}`}
+              >
+                {tag} <span aria-hidden="true">×</span>
+              </Button>
+            ))}
+          </div>
+          <Button
+            className="button button-secondary"
+            onPress={() => setTagOpen(true)}
+          >
+            Change
+          </Button>
+        </div>
+      ) : null}
+
       <div className="composer-tools">
         <MenuTrigger>
           <Button className="composer-icon-button" aria-label="Add media">
@@ -850,6 +887,9 @@ export function EntryComposer({
               </MenuItem>
               <MenuItem onAction={() => setPlaceOpen(true)}>
                 <LocationIcon className="size-5" /> Add place
+              </MenuItem>
+              <MenuItem onAction={() => setTagOpen(true)}>
+                <TagIcon className="size-5" /> Add tags
               </MenuItem>
             </Menu>
           </Popover>
@@ -971,10 +1011,23 @@ export function EntryComposer({
             setStageAnnouncement("Place removed from this unsaved Entry.");
           }}
         />
+        <TagPicker
+          open={tagOpen}
+          selected={tags}
+          csrfToken={csrfToken}
+          onChange={(nextTags) => {
+            setTags(nextTags);
+            setClientRequestId(crypto.randomUUID());
+            setSaved(false);
+            setError(null);
+          }}
+          onClose={() => setTagOpen(false)}
+        />
       </div>
       <p className="composer-help">
         Up to five private photos and either one voice note or one video.
-        Selected media stays local until you send this Entry.
+        Selected media stays local until you send this Entry. Tags classify
+        content and cannot create an Entry by themselves.
       </p>
 
       {video ? (
