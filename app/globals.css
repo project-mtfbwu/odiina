@@ -1325,6 +1325,241 @@ select {
   }
 }
 
+/* Increment E: private voice capture and playback. */
+.voice-capture-modal {
+  width: min(92vw, 38rem);
+}
+
+.voice-limit,
+.voice-player-topline,
+.voice-seek-row,
+.voice-draft-status {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.voice-record-state,
+.voice-review {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.voice-ready-mark {
+  width: 4rem;
+  height: 4rem;
+  margin-inline: auto;
+  border: 2px solid var(--accent-strong);
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    var(--accent-strong) 0 22%,
+    transparent 24%
+  );
+}
+
+.voice-recording-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-weight: 800;
+}
+
+.voice-recording-dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  background: var(--danger);
+  color: var(--text);
+}
+
+.voice-timer {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(2.25rem, 10vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  letter-spacing: -0.05em;
+}
+
+.voice-limit-progress,
+.voice-draft-card progress {
+  width: 100%;
+  accent-color: var(--accent-strong);
+}
+
+.voice-stop {
+  border-color: color-mix(in srgb, var(--danger) 65%, var(--line));
+}
+
+.voice-review-controls {
+  display: grid;
+  grid-template-columns: auto minmax(6rem, 1fr) auto auto;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.voice-review-controls input,
+.voice-seek-row input {
+  min-width: 0;
+  accent-color: var(--accent-strong);
+}
+
+.voice-control-button,
+.voice-restart-button {
+  min-height: 2.75rem;
+  border-radius: 999px;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.voice-draft-card,
+.voice-player {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  padding: 0.9rem;
+}
+
+.voice-draft-card {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.voice-draft-audio {
+  width: 100%;
+  min-width: 0;
+  color-scheme: dark;
+}
+
+.voice-draft-actions,
+.voice-player-topline,
+.voice-draft-status,
+.voice-seek-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.voice-player {
+  display: grid;
+  width: min(100%, 42rem);
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.voice-player-compact {
+  padding: 0.75rem;
+}
+
+.voice-player-label {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.voice-player-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.voice-play-button {
+  min-width: 4.75rem;
+  min-height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 55%, var(--line));
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.voice-waveform {
+  display: flex;
+  height: 3.25rem;
+  min-width: 0;
+  align-items: center;
+  gap: 1px;
+  overflow: hidden;
+}
+
+.voice-waveform span {
+  width: 100%;
+  min-width: 1px;
+  max-width: 4px;
+  border-radius: 999px;
+  background: var(--muted);
+  opacity: 0.52;
+}
+
+.voice-waveform span.is-played {
+  background: var(--accent-strong);
+  opacity: 1;
+}
+
+.voice-seek-row input {
+  flex: 1;
+}
+
+.voice-player-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.voice-editor-section {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1.25rem;
+}
+
+@media (max-width: 390px) {
+  .voice-review-controls {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .voice-review-controls .voice-control-button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .voice-player-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-play-button {
+    width: 100%;
+  }
+
+  .voice-seek-row {
+    flex-wrap: wrap;
+  }
+
+  .voice-seek-row input {
+    order: 3;
+    width: 100%;
+    flex-basis: 100%;
+  }
+
+  .voice-draft-actions .button,
+  .voice-record-state .camera-actions .button,
+  .voice-review .camera-actions .button {
+    flex: 1 1 100%;
+  }
+}
+
 .profile-page {
   width: min(100%, 68rem);
   margin-inline: auto;

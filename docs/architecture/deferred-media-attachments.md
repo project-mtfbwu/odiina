@@ -1,18 +1,18 @@
-# Deferred media and video architecture
+# Media and deferred video architecture
 
-Status: the general attachment boundary and private image pipeline are
-implemented in vertical slice 2. Video and audio remain deferred.
+Status: the general attachment boundary and private image and voice-note
+pipelines are implemented. Video remains deferred.
 
 ## Domain boundary
 
-Odiina's attachment domain is media-general. Reserved media kinds are `image`,
-`video` and `audio`. Only `image` is accepted today, and only through the
-implemented JPEG, PNG and WebP pipeline. Video and audio must be enabled only
-when each pipeline is complete.
+Odiina's attachment domain is media-general. Media kinds are `image`, `video`
+and `audio`. Image and audio are accepted only through their implemented narrow
+pipelines. Video stays disabled until its separate pipeline is complete.
 
 The common attachment identity owns object variants without requiring image
 dimensions. Image dimensions and image-only metadata belong in
-`image_metadata`. Video
+`image_metadata`; voice duration, codec, channels, sample rate and waveform
+belong in `audio_metadata`. Video
 duration, codecs, rotation and orientation belong in video-specific metadata.
 This document defines constraints, not a database schema.
 
@@ -109,4 +109,6 @@ probing, transcoding, transcription and model costs before enabling video.
 9. Add AI interpretation only after evidence-coverage language is enforced.
 
 No video dependency, endpoint, control, transcoding service or production
-infrastructure is justified by this deferred document alone.
+infrastructure is justified by this deferred document alone. The audio
+processor must not be broadened into a video pipeline merely because FFmpeg
+is present: any input containing a video stream is rejected.

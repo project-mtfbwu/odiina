@@ -22,13 +22,14 @@ export function EntryMedia({
   compact?: boolean;
 }) {
   const [failed, setFailed] = useState<Set<string>>(() => new Set());
-  if (media.length === 0) return null;
+  const images = media.filter((item) => item.media_kind === "image");
+  if (images.length === 0) return null;
   return (
     <div
-      className={`entry-media-grid ${media.length > 1 ? "entry-media-multiple" : "entry-media-single"}`}
-      aria-label={`${media.length} attached ${media.length === 1 ? "image" : "images"}`}
+      className={`entry-media-grid ${images.length > 1 ? "entry-media-multiple" : "entry-media-single"}`}
+      aria-label={`${images.length} attached ${images.length === 1 ? "image" : "images"}`}
     >
-      {media.map((item, index) =>
+      {images.map((item, index) =>
         failed.has(item.attachment_id) ? (
           <div
             key={item.attachment_id}
@@ -42,13 +43,13 @@ export function EntryMedia({
           <DialogTrigger key={item.attachment_id}>
             <Button
               className={`entry-media-inspect ${compact ? "entry-media-compact" : ""}`}
-              aria-label={`Inspect photo ${index + 1} of ${media.length}`}
+              aria-label={`Inspect photo ${index + 1} of ${images.length}`}
             >
               {/* The authenticated media route always returns a stripped JPEG. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/api/media/${item.attachment_id}${trash ? "?scope=trash" : ""}`}
-                alt={`Photo attached to Entry, ${index + 1} of ${media.length}`}
+                alt={`Photo attached to Entry, ${index + 1} of ${images.length}`}
                 width={item.width}
                 height={item.height}
                 loading="lazy"
@@ -65,19 +66,19 @@ export function EntryMedia({
                   {({ close }) => (
                     <>
                       <Heading slot="title" className="sr-only">
-                        Photo {index + 1} of {media.length}
+                        Photo {index + 1} of {images.length}
                       </Heading>
                       {/* Safe display derivative; originals are never delivered. */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={`/api/media/${item.attachment_id}${trash ? "?scope=trash" : ""}`}
-                        alt={`Photo attached to Entry, ${index + 1} of ${media.length}`}
+                        alt={`Photo attached to Entry, ${index + 1} of ${images.length}`}
                         width={item.width}
                         height={item.height}
                       />
                       <div className="photo-lightbox-footer">
                         <p>
-                          Photo {index + 1} of {media.length} · Private safe
+                          Photo {index + 1} of {images.length} · Private safe
                           derivative
                         </p>
                         <Button

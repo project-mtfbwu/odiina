@@ -1,0 +1,18 @@
+FROM node:24.16-bookworm-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack pnpm install --frozen-lockfile --prod
+
+COPY scripts ./scripts
+
+ENV ODIINA_FFMPEG_PATH=/usr/bin/ffmpeg
+ENV ODIINA_FFPROBE_PATH=/usr/bin/ffprobe
+
+CMD ["node", "scripts/media-worker.mjs"]

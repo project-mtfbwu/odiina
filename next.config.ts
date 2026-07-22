@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
               `script-src ${scriptSource}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
+              "media-src 'self' blob:",
               "font-src 'self'",
               `connect-src 'self' ${storageOrigin}`.trim(),
               "form-action 'self'",
@@ -44,7 +45,7 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value:
-              "camera=(self), microphone=(), geolocation=(), payment=(), usb=()",
+              "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()",
           },
           { key: "X-Frame-Options", value: "DENY" },
           ...(process.env.NODE_ENV === "production"

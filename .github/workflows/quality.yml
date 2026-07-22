@@ -65,9 +65,24 @@ jobs:
           echo "SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
           echo "SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
           echo "ODIINA_E2E_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "ODIINA_MEDIA_BOOTSTRAP_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
           echo "ODIINA_APP_URL=http://localhost:3000" >> "$GITHUB_ENV"
           echo "ODIINA_E2E=1" >> "$GITHUB_ENV"
           echo "ODIINA_MAILBOX_URL=http://127.0.0.1:54324" >> "$GITHUB_ENV"
+          echo "ODIINA_FEATURE_UPLOADS=true" >> "$GITHUB_ENV"
+          echo "ODIINA_FEATURE_IMAGE_UPLOADS=true" >> "$GITHUB_ENV"
+          echo "ODIINA_FEATURE_AUDIO_UPLOADS=true" >> "$GITHUB_ENV"
+          echo "ODIINA_FEATURE_WORKER=true" >> "$GITHUB_ENV"
+          echo "ODIINA_MEDIA_WORKER_EMAIL=ci-media-worker@odiina.invalid" >> "$GITHUB_ENV"
+          WORKER_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$WORKER_PASSWORD"
+          echo "ODIINA_MEDIA_WORKER_PASSWORD=$WORKER_PASSWORD" >> "$GITHUB_ENV"
+      - run: docker compose -f compose.media.yml --profile worker build media-worker
+      - run: pnpm media:scanner
+      - run: pnpm test:scanner
+      - run: pnpm test:audio
+      - run: pnpm media:worker:bootstrap
+      - run: docker compose -f compose.media.yml --profile worker up -d media-worker
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm seed:e2e-user
       - run: pnpm test:e2e

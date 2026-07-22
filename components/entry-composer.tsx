@@ -14,6 +14,7 @@ import {
 import type { Upload } from "tus-js-client";
 
 import { CameraCapture } from "@/components/camera-capture";
+import { VoiceCapture } from "@/components/voice-capture";
 import {
   CalendarIcon,
   CameraIcon,
@@ -31,9 +32,18 @@ import {
   type ImageDraft,
 } from "@/lib/media/client-upload";
 import {
+  processAudioDraft,
+  type AudioDraft,
+} from "@/lib/media/client-audio-upload";
+import { formatVoiceDuration } from "@/lib/media/recorder";
+import {
+  acceptedAudioMimeTypes,
   acceptedImageMimeTypes,
+  maximumAudioBytes,
+  maximumAudioDurationMs,
   maximumEntryImages,
   maximumImageBytes,
+  minimumAudioDurationMs,
 } from "@/lib/validation/media";
 import {
   localCivilDate,
@@ -62,6 +72,7 @@ export function EntryComposer({
     initialOccurrenceDate ?? localCivilDate(initialNow, timezone);
   const chooseInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  const audioInput = useRef<HTMLInputElement>(null);
   const activeUploads = useRef(new Map<string, Upload>());
   const draftEntryId = useRef<string | null>(null);
   const previewUrls = useRef(new Set<string>());
@@ -71,7 +82,9 @@ export function EntryComposer({
     localTime(initialNow, timezone),
   );
   const [images, setImages] = useState<ImageDraft[]>([]);
+  const [audio, setAudio] = useState<AudioDraft | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [clientRequestId, setClientRequestId] = useState(() =>
     crypto.randomUUID(),
   );
@@ -81,8 +94,12 @@ export function EntryComposer({
   const [saved, setSaved] = useState(false);
   const [stageAnnouncement, setStageAnnouncement] = useState("");
   const remaining = maximumLength - Array.from(body).length;
-  const valid = (body.trim().length > 0 || images.length > 0) && remaining >= 0;
-  const hasFailedUploads = images.some((image) => image.stage === "Failed");
+  const valid =
+    (body.trim().length > 0 || images.length > 0 || audio !== null) &&
+    remaining >= 0;
+  const hasFailedUploads =
+    images.some((image) => image.stage === "Failed") ||
+    audio?.stage === "Failed";
   const today = localCivilDate(initialNow, timezone);
   const isSelectedDay = occurrenceDate !== today;
   const submitLabel = isSelectedDay
@@ -111,6 +128,91 @@ export function EntryComposer({
         image.id === id ? { ...image, ...update } : image,
       ),
     );
+  }
+
+  function updateAudio(update: Partial<AudioDraft>) {
+    setAudio((current) => (current ? { ...current, ...update } : current));
+  }
+
+  function addVoice(file: File, durationMs: number) {
+    if (audio) {
+      setError("Discard the selected voice note before choosing another one.");
+      return;
+    }
+    if (
+      !acceptedAudioMimeTypes.includes(
+        file.type as (typeof acceptedAudioMimeTypes)[number],
+      )
+    ) {
+      setError("Choose WebM/Opus, Ogg/Opus, or M4A/AAC audio only.");
+      return;
+    }
+    if (file.size < 1 || file.size > maximumAudioBytes) {
+      setError("A voice note must be no larger than 25 MiB.");
+      return;
+    }
+    if (
+      durationMs < minimumAudioDurationMs ||
+      durationMs > maximumAudioDurationMs
+    ) {
+      setError("A voice note must be between a moment and 10 minutes long.");
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    previewUrls.current.add(previewUrl);
+    setAudio({
+      id: crypto.randomUUID(),
+      file,
+      previewUrl,
+      durationMs,
+      progress: 0,
+      stage: "Selected",
+    });
+    setSaved(false);
+    setError(null);
+    setStageAnnouncement("Voice note selected. Nothing has been uploaded.");
+  }
+
+  async function audioFileDuration(file: File): Promise<number> {
+    const url = URL.createObjectURL(file);
+    try {
+      return await new Promise<number>((resolve, reject) => {
+        const element = document.createElement("audio");
+        element.preload = "metadata";
+        element.onloadedmetadata = () =>
+          Number.isFinite(element.duration)
+            ? resolve(Math.round(element.duration * 1000))
+            : reject(new Error("duration_unavailable"));
+        element.onerror = () => reject(new Error("duration_unavailable"));
+        element.src = url;
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  async function selectAudioFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      addVoice(file, await audioFileDuration(file));
+    } catch {
+      setError(
+        "Odiina could not read this audio draft. Choose another supported file.",
+      );
+    }
+  }
+
+  function removeAudio() {
+    if (!audio) return;
+    URL.revokeObjectURL(audio.previewUrl);
+    previewUrls.current.delete(audio.previewUrl);
+    if (audio.attachmentId && audio.stage !== "Ready") {
+      void cancelImageAttempt(csrfToken, audio.attachmentId).catch(() => {});
+    }
+    setAudio(null);
+    setStageAnnouncement("Voice note removed from this unsaved Entry.");
   }
 
   function addFiles(chosen: File[]) {
@@ -216,6 +318,9 @@ export function EntryComposer({
     const ids = images.flatMap((image) =>
       image.attachmentId && image.stage !== "Ready" ? [image.attachmentId] : [],
     );
+    if (audio?.attachmentId && audio.stage !== "Ready") {
+      ids.push(audio.attachmentId);
+    }
     await Promise.allSettled(
       ids.map((attachmentId) => cancelImageAttempt(csrfToken, attachmentId)),
     );
@@ -226,16 +331,19 @@ export function EntryComposer({
           : { ...image, stage: "Failed", error: "Upload cancelled." },
       ),
     );
+    if (audio && audio.stage !== "Ready") {
+      updateAudio({ stage: "Failed", error: "Upload cancelled." });
+    }
     setBusy(false);
     setCancelling(false);
-    setStageAnnouncement("Image upload cancelled.");
+    setStageAnnouncement("Media upload cancelled.");
   }
 
   async function submit() {
     if (!valid || busy) return;
     if (!navigator.onLine) {
       setError(
-        "You are offline. Your text and selected photos remain here; reconnect to save.",
+        "You are offline. Your text and selected media remain here; reconnect to save.",
       );
       return;
     }
@@ -257,7 +365,7 @@ export function EntryComposer({
       return;
     }
     try {
-      if (images.length === 0) {
+      if (images.length === 0 && !audio) {
         await jsonRequest("/api/entries", {
           clientRequestId,
           bodyText: body,
@@ -267,6 +375,7 @@ export function EntryComposer({
         let activeDraftId =
           draftEntryId.current ??
           images.find((image) => image.entryId)?.entryId ??
+          audio?.entryId ??
           null;
         const attachmentIds: string[] = [];
         for (const image of images) {
@@ -291,6 +400,28 @@ export function EntryComposer({
             throw caught;
           }
         }
+        if (audio) {
+          try {
+            const processed = await processAudioDraft({
+              audio,
+              entryId: activeDraftId,
+              csrfToken,
+              activeUploads: activeUploads.current,
+              update: updateAudio,
+              announce: setStageAnnouncement,
+            });
+            activeDraftId = processed.entryId;
+            draftEntryId.current = processed.entryId;
+            attachmentIds.push(processed.attachmentId);
+          } catch (caught) {
+            const message =
+              caught instanceof Error
+                ? caught.message
+                : "Odiina could not process this voice note.";
+            updateAudio({ stage: "Failed", error: message });
+            throw caught;
+          }
+        }
         await jsonRequest("/api/media/activate", {
           clientRequestId,
           entryId: activeDraftId,
@@ -304,6 +435,11 @@ export function EntryComposer({
         previewUrls.current.delete(image.previewUrl);
       }
       setImages([]);
+      if (audio) {
+        URL.revokeObjectURL(audio.previewUrl);
+        previewUrls.current.delete(audio.previewUrl);
+      }
+      setAudio(null);
       draftEntryId.current = null;
       setBody("");
       setClientRequestId(crypto.randomUUID());
@@ -354,7 +490,9 @@ export function EntryComposer({
         }}
         isInvalid={remaining < 0}
       >
-        <Label className="sr-only">Entry text (optional with photos)</Label>
+        <Label className="sr-only">
+          Entry text (optional with private media)
+        </Label>
         <TextArea
           id="entry-body"
           className="composer-textarea"
@@ -431,8 +569,28 @@ export function EntryComposer({
               <MenuItem onAction={() => chooseInput.current?.click()}>
                 <ImageIcon className="size-5" /> Choose photos
               </MenuItem>
-              <MenuItem onAction={() => setCameraOpen(true)}>
+              <MenuItem
+                onAction={() => {
+                  setVoiceOpen(false);
+                  setCameraOpen(true);
+                }}
+              >
                 <CameraIcon className="size-5" /> Take photo
+              </MenuItem>
+              <MenuItem
+                onAction={() => {
+                  setCameraOpen(false);
+                  setVoiceOpen(true);
+                }}
+                isDisabled={Boolean(audio)}
+              >
+                <MicrophoneIcon className="size-5" /> Record voice note
+              </MenuItem>
+              <MenuItem
+                onAction={() => audioInput.current?.click()}
+                isDisabled={Boolean(audio)}
+              >
+                <MicrophoneIcon className="size-5" /> Choose audio file
               </MenuItem>
               <MenuItem isDisabled>
                 <VideoIcon className="size-5" /> Choose video
@@ -451,7 +609,10 @@ export function EntryComposer({
         </MenuTrigger>
         <Button
           className="composer-icon-button"
-          onPress={() => setCameraOpen(true)}
+          onPress={() => {
+            setVoiceOpen(false);
+            setCameraOpen(true);
+          }}
           isDisabled={busy || images.length >= maximumEntryImages}
           aria-label="Take a photo"
         >
@@ -459,11 +620,26 @@ export function EntryComposer({
         </Button>
         <Button
           className="composer-icon-button"
-          isDisabled
-          aria-label="Voice note recording — available in MVP stage E"
+          onPress={() => {
+            setCameraOpen(false);
+            setVoiceOpen(true);
+          }}
+          isDisabled={busy || Boolean(audio)}
+          aria-label={
+            audio ? "One voice note is already selected" : "Record a voice note"
+          }
         >
           <MicrophoneIcon className="size-5" />
         </Button>
+        <input
+          ref={audioInput}
+          className="sr-only"
+          type="file"
+          accept={acceptedAudioMimeTypes.join(",")}
+          aria-label="Choose an existing audio file"
+          onChange={(event) => void selectAudioFile(event)}
+          disabled={busy || Boolean(audio)}
+        />
         <input
           ref={cameraInput}
           className="sr-only"
@@ -491,11 +667,65 @@ export function EntryComposer({
           onChoosePhotos={() => chooseInput.current?.click()}
           onNativeCapture={() => cameraInput.current?.click()}
         />
+        <VoiceCapture
+          isOpen={voiceOpen}
+          onOpenChange={setVoiceOpen}
+          onUseVoice={addVoice}
+          onChooseAudio={() => audioInput.current?.click()}
+        />
       </div>
       <p className="composer-help">
-        Up to five JPEG, PNG, or WebP images, 15 MiB each. Odiina checks and
-        prepares images privately before showing them.
+        Up to five private photos and one voice note up to 10 minutes. Selected
+        media stays local until you send this Entry.
       </p>
+
+      {audio ? (
+        <section
+          className="voice-draft-card"
+          aria-labelledby="voice-draft-heading"
+        >
+          <div className="voice-player-topline">
+            <p id="voice-draft-heading" className="voice-player-label">
+              Voice-note draft
+            </p>
+            <span>{formatVoiceDuration(audio.durationMs)}</span>
+          </div>
+          <audio
+            className="voice-draft-audio"
+            src={audio.previewUrl}
+            controls
+            preload="metadata"
+            aria-label="Review selected voice-note draft"
+          />
+          <div className="voice-draft-status" role="status">
+            <span>{audio.stage}</span>
+            {audio.stage === "Uploading" ? (
+              <span>{audio.progress}%</span>
+            ) : null}
+          </div>
+          {audio.stage === "Uploading" ? (
+            <progress
+              max={100}
+              value={audio.progress}
+              aria-label="Voice-note upload progress"
+            />
+          ) : null}
+          {audio.error ? (
+            <p className="voice-player-error" role="alert">
+              {audio.error}
+            </p>
+          ) : null}
+          <div className="voice-draft-actions">
+            <Button
+              className="button button-quiet min-h-11 px-3 text-xs"
+              onPress={removeAudio}
+              isDisabled={busy}
+            >
+              Discard voice note
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       {images.length > 0 ? (
         <div className="image-preview-shell">

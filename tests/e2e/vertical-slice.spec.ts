@@ -91,10 +91,33 @@ test("@authenticated completes Odiina Increments A through D", async ({
   );
 
   await page.addInitScript(() => {
-    const state = window as typeof window & { __odiinaTrackStops: number };
+    const state = window as typeof window & {
+      __odiinaTrackStops: number;
+      __odiinaMicTrackStops: number;
+    };
     const counterKey = "odiina-e2e-camera-track-stops";
     state.__odiinaTrackStops = Number(localStorage.getItem(counterKey) ?? 0);
-    const getUserMedia = async () => {
+    state.__odiinaMicTrackStops = 0;
+    const getUserMedia = async (constraints?: MediaStreamConstraints) => {
+      if (constraints?.audio) {
+        const context = new AudioContext();
+        const destination = context.createMediaStreamDestination();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.frequency.value = 440;
+        gain.gain.value = 0.08;
+        oscillator.connect(gain).connect(destination);
+        oscillator.start();
+        const track = destination.stream.getAudioTracks()[0];
+        const stop = track.stop.bind(track);
+        track.stop = () => {
+          state.__odiinaMicTrackStops += 1;
+          oscillator.stop();
+          void context.close();
+          stop();
+        };
+        return destination.stream;
+      }
       const canvas = document.createElement("canvas");
       canvas.width = 640;
       canvas.height = 480;

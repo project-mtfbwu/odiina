@@ -33,7 +33,7 @@ export const reviseEntrySchema = z
     bodyText: z.string().max(100_000),
     attachmentIds: z
       .array(z.uuid())
-      .max(5)
+      .max(6)
       .refine((ids) => new Set(ids).size === ids.length)
       .optional(),
     changeReason: z.enum(["edited", "occurrence_corrected"]),

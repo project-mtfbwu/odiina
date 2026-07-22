@@ -14,5 +14,22 @@ services:
       start_period: 90s
     restart: unless-stopped
 
+  media-worker:
+    profiles: ["worker"]
+    build:
+      context: .
+      dockerfile: Dockerfile.media-worker
+    env_file:
+      - .env.local
+    environment:
+      SUPABASE_URL: http://host.docker.internal:54321
+      ODIINA_CLAMAV_HOST: clamav
+      ODIINA_FFMPEG_PATH: /usr/bin/ffmpeg
+      ODIINA_FFPROBE_PATH: /usr/bin/ffprobe
+    depends_on:
+      clamav:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   odiina-clamav-signatures:

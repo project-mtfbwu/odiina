@@ -3,7 +3,7 @@
 Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
-This repository contains the local scaffold and the first four MVP increments.
+This repository contains the local scaffold and the first five MVP increments.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -22,6 +22,10 @@ tagline or final brand assets have been selected.
 - Image-only Entries and immutable, ordered image membership per revision
 - Progressive live camera capture with review, retake and native-picker fallback
 - Private safe-derivative Feed/detail inspection with accessible focus restoration
+- Private live voice-note recording and existing-audio selection with local review
+- One voice note per revision, mixed with optional text and up to five photos
+- Malware scanning, strict audio probing and canonical private AAC playback
+- Accessible waveform, seek, pause and single-active-player controls
 - Calendar recall using explicit occurrence dates
 - Private Profile identity with display name, canonical unique handle and bio
 - Private avatar/banner processing and owner-authorized delivery
@@ -29,16 +33,16 @@ tagline or final brand assets have been selected.
 - Honest loading, empty, error and offline states
 - Repository migration, seed data, pgTAP, unit and browser-test scaffolds
 
-AI, OpenAI calls, video, audio, sharing, reports, search, tags, projects,
-charts, voice and private-content service-worker caching are
+AI, OpenAI calls, video, sharing, reports, search, tags, projects,
+charts, transcription and private-content service-worker caching are
 deliberately absent. Their feature flags are false.
 
 ## Media boundary
 
-Attachments use a media-general domain model. Slice 2 accepts only the `image`
-kind and only JPEG, PNG and WebP through its implemented pipeline. The
-`video` and `audio` kinds remain reserved and cannot be submitted through
-routes or RPCs. Common attachment records do not require image dimensions;
+Attachments use a media-general domain model. Implemented pipelines accept
+JPEG, PNG and WebP `image` media and WebM/Opus, Ogg/Opus or M4A/AAC `audio`
+media. `video` remains reserved and cannot be submitted through routes or
+RPCs. Common attachment records do not require image dimensions;
 those facts live in image metadata.
 
 Video scope includes existing-file upload and accessible mobile capture,
@@ -82,6 +86,8 @@ Increment C's identity, media-retention and statistics policies are documented
 in [increment-c-private-profile.md](docs/implementation/increment-c-private-profile.md).
 Increment D's picker, camera, retry and image-revision policies are documented
 in [increment-d-photo-capture.md](docs/implementation/increment-d-photo-capture.md).
+Increment E's voice consent, processing, playback and revision policies are
+documented in [increment-e-voice-capture.md](docs/implementation/increment-e-voice-capture.md).
 
 ## Local prerequisites
 
@@ -143,7 +149,7 @@ Only the documented Supabase, application, signed-TUS, worker/scanner and
 feature-flag variables are active. OpenAI is not configured. No secret may
 receive a `NEXT_PUBLIC_` prefix.
 
-Image processing needs a separately bootstrapped worker identity. The bootstrap
+Media processing needs a separately bootstrapped worker identity. The bootstrap
 service-role key is accepted only from the current process, only against
 loopback Supabase, and must never be written to `.env.local`. See the exact
 commands in [vertical-slice-2.md](docs/implementation/vertical-slice-2.md).
@@ -170,6 +176,7 @@ corepack pnpm typecheck
 corepack pnpm test
 corepack pnpm test:db
 corepack pnpm test:scanner
+corepack pnpm test:audio
 corepack pnpm test:e2e
 corepack pnpm test:a11y
 corepack pnpm build

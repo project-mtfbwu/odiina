@@ -5,6 +5,7 @@ import Link from "next/link";
 import { EntryEditor } from "@/components/entry-editor";
 import { EntryMedia } from "@/components/entry-media";
 import { RestoreEntryButton } from "@/components/restore-entry-button";
+import { VoicePlayer } from "@/components/voice-player";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
 import { getEntryDetail, getPreferences } from "@/lib/database/queries";
 
@@ -116,6 +117,10 @@ export default async function EntryPage({
                 media={current.media}
                 trash={entry.lifecycle_state === "trashed"}
               />
+              <VoicePlayer
+                media={current.media}
+                trash={entry.lifecycle_state === "trashed"}
+              />
             </div>
           ) : null}
           {entry.lifecycle_state === "trashed" ? (
@@ -185,6 +190,11 @@ export default async function EntryPage({
               {revision.media.length > 0 ? (
                 <div className="mt-3">
                   <EntryMedia
+                    media={revision.media}
+                    trash={entry.lifecycle_state === "trashed"}
+                    compact
+                  />
+                  <VoicePlayer
                     media={revision.media}
                     trash={entry.lifecycle_state === "trashed"}
                     compact

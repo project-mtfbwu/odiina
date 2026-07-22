@@ -2,8 +2,9 @@ import Link from "next/link";
 
 import { entryPreview } from "@/components/entry-preview";
 import { EntryMedia } from "@/components/entry-media";
-import { ImageIcon, LockIcon } from "@/components/icons";
+import { ImageIcon, LockIcon, MicrophoneIcon } from "@/components/icons";
 import { TrashEntryButton } from "@/components/trash-entry-button";
+import { VoicePlayer } from "@/components/voice-player";
 import type { FeedEntry } from "@/lib/database/types";
 
 function formatOccurrence(value: string, timezone: string): string {
@@ -24,6 +25,10 @@ export function EntryCard({
   displayName: string;
   onRemoved?: (entryId: string) => void;
 }) {
+  const imageCount = entry.media.filter(
+    (item) => item.media_kind === "image",
+  ).length;
+  const hasVoice = entry.media.some((item) => item.media_kind === "audio");
   return (
     <article
       className="entry-card"
@@ -46,13 +51,17 @@ export function EntryCard({
           </time>
         </div>
         <div className="entry-badges">
-          {entry.media.length ? (
+          {imageCount ? (
             <span>
               <ImageIcon className="size-4" /> Image
             </span>
-          ) : (
-            <span>Text</span>
-          )}
+          ) : null}
+          {hasVoice ? (
+            <span>
+              <MicrophoneIcon className="size-4" /> Voice
+            </span>
+          ) : null}
+          {!imageCount && !hasVoice ? <span>Text</span> : null}
           {entry.revision_number > 1 ? <span>Edited</span> : null}
           {new Date(entry.created_at).getTime() >
           new Date(entry.occurred_at).getTime() + 60_000 ? (
@@ -76,12 +85,17 @@ export function EntryCard({
         <span className="line-clamp-4 sm:line-clamp-5">
           {entry.body_text
             ? entryPreview(entry.body_text)
-            : `${entry.media.length} ${entry.media.length === 1 ? "photo" : "photos"}`}
+            : hasVoice && imageCount
+              ? `Voice note with ${imageCount} ${imageCount === 1 ? "photo" : "photos"}`
+              : hasVoice
+                ? "Private voice note"
+                : `${imageCount} ${imageCount === 1 ? "photo" : "photos"}`}
         </span>
       </Link>
       {entry.media.length > 0 ? (
         <div className="entry-media">
           <EntryMedia media={entry.media} compact />
+          <VoicePlayer media={entry.media} compact />
         </div>
       ) : null}
       <div className="entry-footer">

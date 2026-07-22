@@ -29,10 +29,10 @@ an “all active Entries contain text” invariant. Slice 2 adds attachment-awar
 activation and revision RPCs while retaining the text-only RPCs for backward
 compatibility.
 
-Attachments are modeled through a general media abstraction with reserved
-kinds `image`, `video` and `audio`. Slice 2 accepts only `image` through the
-implemented JPEG, PNG and WebP pipeline. Video and audio remain architectural
-reservations and are rejected by current routes and mutation functions.
+Attachments are modeled through a general media abstraction with media kinds
+`image`, `video` and `audio`. The image pipeline accepts JPEG, PNG and WebP.
+Increment E adds a narrow audio pipeline for WebM/Opus, Ogg/Opus and M4A/AAC;
+video remains an architectural reservation rejected by routes and mutations.
 
 Common attachment records do not require image dimensions. Image dimensions
 and EXIF-derived facts belong in image metadata or media-variant structures.
@@ -56,7 +56,25 @@ to a registered worker, and verified display objects through Odiina’s
 owner-authorized delivery route.
 
 See [deferred-media-attachments.md](deferred-media-attachments.md) for the
-remaining video and audio extension boundary.
+remaining video extension boundary.
+
+## Increment E voice-note extension
+
+Increment E remains additive. It adds a private `playback` object variant and
+bucket, plus forced-RLS `audio_metadata` containing the accepted duration,
+source facts and a fixed 96-point waveform. The common attachment table has no
+audio-only columns. Entry revision membership permits up to five images and
+one audio attachment; its immutable-history trigger still blocks update and
+delete.
+
+Audio authorization derives ownership from the verified request claim and
+accepts only a matching filename/MIME pair within 25 MiB. The media worker
+claims audio through the existing lease queue, scans quarantine bytes before
+probing, rejects ambiguous or video-bearing input, and produces a mono 48 kHz
+AAC-LC M4A playback rendition with unnecessary metadata removed. Acceptance
+commits the immutable original, playback object, metadata and queue state in
+one lease-fenced function. Playback is delivered only through an owner-scoped,
+no-store same-origin route with byte-range support.
 
 ## Private Profile media purpose
 

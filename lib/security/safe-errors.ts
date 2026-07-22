@@ -14,6 +14,11 @@ const safeErrorMap: Record<string, string> = {
     "Wait for the Profile image to finish processing, then try again.",
   odiina_image_upload_invalid:
     "Choose a JPEG, PNG, or WebP image up to 15 MiB.",
+  odiina_audio_upload_invalid:
+    "Choose WebM/Opus, Ogg/Opus, or M4A/AAC audio up to 25 MiB.",
+  odiina_voice_limit: "Each Entry revision can contain one voice note.",
+  odiina_entry_media_limit:
+    "An Entry can contain up to five photos and one voice note.",
 };
 
 export function safeErrorMessage(code: string | undefined): string {

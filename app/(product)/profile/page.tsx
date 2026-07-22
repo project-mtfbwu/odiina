@@ -32,6 +32,7 @@ export default async function ProfilePage({
     { value: statistics.active_logging_days, label: "Logging days" },
     { value: statistics.current_month_entries, label: "This month" },
     { value: statistics.image_entries, label: "Image Entries" },
+    { value: statistics.voice_entries, label: "Voice Entries" },
     { value: statistics.edited_entries, label: "Edited Entries" },
   ];
   return (

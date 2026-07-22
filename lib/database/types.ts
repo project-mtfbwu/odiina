@@ -1,9 +1,24 @@
-export type EntryMedia = {
+export type EntryImageMedia = {
   attachment_id: string;
   media_position: number;
+  media_kind: "image";
   width: number;
   height: number;
+  duration_ms: null;
+  waveform_peaks: null;
 };
+
+export type EntryAudioMedia = {
+  attachment_id: string;
+  media_position: number;
+  media_kind: "audio";
+  width: null;
+  height: null;
+  duration_ms: number;
+  waveform_peaks: number[];
+};
+
+export type EntryMedia = EntryImageMedia | EntryAudioMedia;
 
 export type FeedEntry = {
   entry_id: string;
@@ -68,5 +83,6 @@ export type ProfileStatistics = {
   active_logging_days: number;
   current_month_entries: number;
   image_entries: number;
+  voice_entries: number;
   edited_entries: number;
 };

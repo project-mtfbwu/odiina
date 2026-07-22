@@ -21,17 +21,20 @@ export default defineConfig({
   projects: [
     {
       name: "mobile-320",
-      grepInvert: /@authenticated|@calendar|@photo-layout|@camera-capability/,
+      grepInvert:
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
       use: { viewport: { width: 320, height: 720 } },
     },
     {
       name: "mobile-390",
-      grepInvert: /@authenticated|@calendar|@photo-layout|@camera-capability/,
+      grepInvert:
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
       use: { viewport: { width: 390, height: 844 } },
     },
     {
       name: "tablet-768",
-      grepInvert: /@authenticated|@calendar|@photo-layout|@camera-capability/,
+      grepInvert:
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
       use: {
         browserName: "chromium",
         hasTouch: true,
@@ -41,17 +44,20 @@ export default defineConfig({
     },
     {
       name: "desktop-960",
-      grepInvert: /@authenticated|@calendar|@photo-layout|@camera-capability/,
+      grepInvert:
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
       use: { viewport: { width: 960, height: 900 } },
     },
     {
       name: "desktop-1200",
-      grepInvert: /@authenticated|@calendar|@photo-layout|@camera-capability/,
+      grepInvert:
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
       use: { viewport: { width: 1200, height: 900 } },
     },
     {
       name: "desktop-1440",
-      grepInvert: /@authenticated|@calendar|@photo-layout|@camera-capability/,
+      grepInvert:
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
       use: { viewport: { width: 1440, height: 1000 } },
     },
     {
@@ -191,6 +197,54 @@ export default defineConfig({
     {
       name: "camera-capability-mobile",
       grep: /@camera-capability/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    ...[320, 390, 768, 960, 1440].map((width) => ({
+      name: `voice-layout-${width}`,
+      grep: /@voice-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium" as const,
+        hasTouch: width <= 768,
+        isMobile: width <= 768,
+        storageState: "test-results/calendar-auth.json",
+        viewport: {
+          width,
+          height: width <= 390 ? 844 : width <= 768 ? 1024 : 900,
+        },
+      },
+    })),
+    {
+      name: "voice-capability-mobile",
+      grep: /@voice-capability/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    {
+      name: "voice-journey-desktop",
+      grep: /@voice-journey/,
+      dependencies: ["calendar-setup"],
+      use: {
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 1200, height: 900 },
+      },
+    },
+    {
+      name: "voice-journey-mobile",
+      grep: /@voice-journey/,
       dependencies: ["calendar-setup"],
       use: {
         browserName: "chromium",

@@ -3,6 +3,10 @@ import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
 
 import { assertScannerHealthy, scanBuffer } from "./media/clamav.mjs";
+import {
+  assertAudioProcessorHealthy,
+  prepareSafeAudio,
+} from "./media/audio-safety.mjs";
 import { prepareSafeImage, sha256 } from "./media/image-safety.mjs";
 
 const required = [
@@ -21,6 +25,10 @@ const scanner = {
   timeoutMs: Number(process.env.ODIINA_CLAMAV_TIMEOUT_MS ?? "15000"),
 };
 const once = process.argv.includes("--once");
+const audioProcessor = {
+  ffmpegPath: process.env.ODIINA_FFMPEG_PATH ?? "ffmpeg",
+  ffprobePath: process.env.ODIINA_FFPROBE_PATH ?? "ffprobe",
+};
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_PUBLISHABLE_KEY,
@@ -92,52 +100,101 @@ async function processJob(job) {
     return;
   }
 
-  await heartbeat(job, "preparing");
-  const purposeResult = await supabase
-    .schema("app")
-    .rpc("processing_media_purpose", { p_attachment_id: job.attachment_id });
-  rpcError(purposeResult.error);
-  const prepared = await prepareSafeImage(input, purposeResult.data);
-  await uploadImmutable(
-    "odiina-originals",
-    job.original_key,
-    input,
-    `image/${prepared.format}`,
-  );
-  await uploadImmutable(
-    "odiina-display",
-    job.display_key,
-    prepared.display.data,
-    "image/jpeg",
-  );
-  await uploadImmutable(
-    "odiina-ai",
-    job.ai_key,
-    prepared.ai.data,
-    "image/jpeg",
-  );
+  if (job.media_kind === "image") {
+    await heartbeat(job, "preparing");
+    const purposeResult = await supabase
+      .schema("app")
+      .rpc("processing_media_purpose", { p_attachment_id: job.attachment_id });
+    rpcError(purposeResult.error);
+    const prepared = await prepareSafeImage(input, purposeResult.data);
+    await uploadImmutable(
+      "odiina-originals",
+      job.original_key,
+      input,
+      `image/${prepared.format}`,
+    );
+    await uploadImmutable(
+      "odiina-display",
+      job.display_key,
+      prepared.display.data,
+      "image/jpeg",
+    );
+    await uploadImmutable(
+      "odiina-ai",
+      job.ai_key,
+      prepared.ai.data,
+      "image/jpeg",
+    );
 
-  await heartbeat(job, "promoting");
-  const commit = await supabase.schema("app").rpc("commit_processed_image", {
-    p_job_id: job.job_id,
-    p_lease_token: job.lease_token,
-    p_input_format: prepared.format,
-    p_input_width: prepared.inputWidth,
-    p_input_height: prepared.inputHeight,
-    p_display_width: prepared.display.info.width,
-    p_display_height: prepared.display.info.height,
-    p_ai_width: prepared.ai.info.width,
-    p_ai_height: prepared.ai.info.height,
-    p_quarantine_sha256: `\\x${quarantineHash.toString("hex")}`,
-    p_quarantine_bytes: input.length,
-    p_original_sha256: `\\x${quarantineHash.toString("hex")}`,
-    p_original_bytes: input.length,
-    p_display_sha256: `\\x${sha256(prepared.display.data).toString("hex")}`,
-    p_display_bytes: prepared.display.data.length,
-    p_ai_sha256: `\\x${sha256(prepared.ai.data).toString("hex")}`,
-    p_ai_bytes: prepared.ai.data.length,
-  });
-  rpcError(commit.error);
+    await heartbeat(job, "promoting");
+    const commit = await supabase.schema("app").rpc("commit_processed_image", {
+      p_job_id: job.job_id,
+      p_lease_token: job.lease_token,
+      p_input_format: prepared.format,
+      p_input_width: prepared.inputWidth,
+      p_input_height: prepared.inputHeight,
+      p_display_width: prepared.display.info.width,
+      p_display_height: prepared.display.info.height,
+      p_ai_width: prepared.ai.info.width,
+      p_ai_height: prepared.ai.info.height,
+      p_quarantine_sha256: `\\x${quarantineHash.toString("hex")}`,
+      p_quarantine_bytes: input.length,
+      p_original_sha256: `\\x${quarantineHash.toString("hex")}`,
+      p_original_bytes: input.length,
+      p_display_sha256: `\\x${sha256(prepared.display.data).toString("hex")}`,
+      p_display_bytes: prepared.display.data.length,
+      p_ai_sha256: `\\x${sha256(prepared.ai.data).toString("hex")}`,
+      p_ai_bytes: prepared.ai.data.length,
+    });
+    rpcError(commit.error);
+  } else if (job.media_kind === "audio") {
+    await heartbeat(job, "validating");
+    const prepared = await prepareSafeAudio(input, {
+      declaredMime: job.declared_mime,
+      originalFilename: job.original_filename,
+      ...audioProcessor,
+    });
+    await heartbeat(job, "transcoding");
+    const detectedOriginalMime =
+      prepared.container === "webm"
+        ? "audio/webm"
+        : prepared.container === "ogg"
+          ? "audio/ogg"
+          : "audio/mp4";
+    await uploadImmutable(
+      "odiina-originals",
+      job.original_key,
+      input,
+      detectedOriginalMime,
+    );
+    await uploadImmutable(
+      "odiina-playback",
+      job.playback_key,
+      prepared.playback,
+      "audio/mp4",
+    );
+    await heartbeat(job, "waveform");
+    const commit = await supabase.schema("app").rpc("commit_processed_audio", {
+      p_job_id: job.job_id,
+      p_lease_token: job.lease_token,
+      p_input_container: prepared.container,
+      p_input_codec: prepared.codec,
+      p_input_duration_ms: prepared.durationMs,
+      p_input_channels: prepared.channels,
+      p_input_sample_rate: prepared.sampleRate,
+      p_quarantine_sha256: `\\x${quarantineHash.toString("hex")}`,
+      p_quarantine_bytes: input.length,
+      p_original_sha256: `\\x${quarantineHash.toString("hex")}`,
+      p_original_bytes: input.length,
+      p_playback_sha256: `\\x${sha256(prepared.playback).toString("hex")}`,
+      p_playback_bytes: prepared.playback.length,
+      p_playback_duration_ms: prepared.playbackDurationMs,
+      p_waveform_peaks: prepared.waveformPeaks,
+    });
+    rpcError(commit.error);
+  } else {
+    throw new Error("media_kind_unimplemented");
+  }
 
   await heartbeat(job, "cleanup");
   const removal = await supabase.storage
@@ -165,6 +222,18 @@ async function fail(job, error) {
     "image_too_large",
     "image_dimensions_invalid",
     "animated_image_rejected",
+    "unsupported_audio_signature",
+    "audio_declaration_mismatch",
+    "unexpected_media_stream",
+    "unsupported_audio_codec",
+    "audio_too_short",
+    "audio_duration_exceeded",
+    "audio_channels_unsupported",
+    "audio_sample_rate_unsupported",
+    "audio_source_size_invalid",
+    "audio_decode_empty",
+    "audio_playback_invalid",
+    "audio_playback_duration_mismatch",
   ].includes(code);
   const retryable = [
     "scanner_timeout",
@@ -172,6 +241,9 @@ async function fail(job, error) {
     "scanner_unhealthy",
     "quarantine_download_failed",
     "quarantine_cleanup_failed",
+    "audio_processor_timeout",
+    "audio_processor_unavailable",
+    "audio_processor_failed",
   ].includes(code);
   const result = await supabase.schema("app").rpc("fail_media_job", {
     p_job_id: job.job_id,
@@ -187,6 +259,8 @@ async function fail(job, error) {
     });
   }
 }
+
+await assertAudioProcessorHealthy(audioProcessor);
 
 const login = await supabase.auth.signInWithPassword({
   email: process.env.ODIINA_MEDIA_WORKER_EMAIL,
