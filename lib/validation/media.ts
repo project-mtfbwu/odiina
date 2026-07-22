@@ -28,6 +28,7 @@ export const attachmentStatusSchema = z.object({
 
 export const activateMediaEntrySchema = z
   .object({
+    clientRequestId: z.string().uuid(),
     entryId: z.string().uuid(),
     bodyText: z.string().max(100_000),
     attachmentIds: z

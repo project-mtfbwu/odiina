@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(19);
+select extensions.plan(26);
 
 select extensions.ok(
   not (select rolbypassrls from pg_roles where rolname = 'odiina_worker_api'),
@@ -154,7 +154,7 @@ select extensions.throws_ok(
     'forged.png', 'image/png', 1024
   ),
   'P0001',
-  'odiina_media_draft_unavailable',
+  'odiina_media_entry_unavailable',
   'another owner cannot add to the draft'
 );
 
@@ -292,6 +292,127 @@ select extensions.throws_ok(
   'odiina_revision_immutable',
   'historical attachment membership cannot be deleted'
 );
+
+select extensions.is(
+  (
+    select count(*)::bigint
+    from pg_proc as p
+    join pg_namespace as n on n.oid = p.pronamespace
+    where n.nspname = 'app'
+      and p.proname = 'activate_media_entry'
+      and p.pronargs = 7
+  ),
+  0::bigint,
+  'non-idempotent media activation signature is removed'
+);
+select extensions.ok(
+  pg_catalog.has_function_privilege(
+    'authenticated',
+    'app.activate_media_entry(uuid,uuid,text,uuid[],timestamptz,text,date,smallint)',
+    'EXECUTE'
+  ),
+  'authenticated receives only the idempotent activation signature'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"44444444-4444-4444-8444-444444444444","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+create temporary table active_revision_upload as
+select *
+from app.authorize_image_upload(
+  (select entry_id from media_active_ids),
+  'new-revision.jpg', 'image/jpeg', 1024
+);
+select extensions.is(
+  (select entry_id from active_revision_upload),
+  (select entry_id from media_active_ids),
+  'an owner can authorize a new photo against an active Entry revision'
+);
+
+reset role;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"55555555-5555-4555-8555-555555555555","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+select extensions.throws_ok(
+  format(
+    'select * from app.authorize_image_upload(%L,%L,%L,%L)',
+    (select entry_id from media_active_ids),
+    'cross-owner.jpg', 'image/jpeg', 1024
+  ),
+  'P0001',
+  'odiina_media_entry_unavailable',
+  'another owner cannot add a photo to an active Entry'
+);
+
+reset role;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"44444444-4444-4444-8444-444444444444","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+create temporary table idempotent_media_draft as
+select * from app.authorize_image_upload(
+  null, 'idempotent.jpg', 'image/jpeg', 1024
+);
+reset role;
+update app.attachments
+set state = 'accepted', accepted_at = statement_timestamp()
+where id = (select attachment_id from idempotent_media_draft);
+set local role authenticated;
+create temporary table first_media_activation as
+select * from app.activate_media_entry(
+  '88888888-8888-4888-8888-888888888888',
+  (select entry_id from idempotent_media_draft),
+  '',
+  array[(select attachment_id from idempotent_media_draft)],
+  '2026-07-20T12:00:00Z', 'UTC', '2026-07-20', 0::smallint
+);
+select extensions.is(
+  (
+    select revision_id
+    from app.activate_media_entry(
+      '88888888-8888-4888-8888-888888888888',
+      (select entry_id from idempotent_media_draft),
+      '',
+      array[(select attachment_id from idempotent_media_draft)],
+      '2026-07-20T12:00:00Z', 'UTC', '2026-07-20', 0::smallint
+    )
+  ),
+  (select revision_id from first_media_activation),
+  'replaying a media activation returns the original revision'
+);
+reset role;
+select extensions.is(
+  (
+    select count(*)::bigint
+    from app.entry_revisions
+    where entry_id = (select entry_id from idempotent_media_draft)
+  ),
+  1::bigint,
+  'an activation replay creates no duplicate revision'
+);
+set local role authenticated;
+select extensions.throws_ok(
+  format(
+    'select * from app.activate_media_entry(%L,%L,%L,%L::uuid[],%L,%L,%L,%L)',
+    '88888888-8888-4888-8888-888888888888',
+    (select entry_id from idempotent_media_draft),
+    'changed body',
+    array[(select attachment_id from idempotent_media_draft)],
+    '2026-07-20T12:00:00Z', 'UTC', '2026-07-20', 0
+  ),
+  'P0001',
+  'odiina_idempotency_conflict',
+  'reusing an activation key with different content is rejected'
+);
+reset role;
 
 select * from extensions.finish();
 rollback;

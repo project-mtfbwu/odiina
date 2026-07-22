@@ -11,6 +11,7 @@
   --rail: #0b0e18;
   --rail-muted: #9198ac;
   --accent: #7154d8;
+  --accent-hover: #5f45bd;
   --accent-strong: #a995ff;
   --accent-soft: #282044;
   --danger: #ff727e;
@@ -861,7 +862,7 @@ select {
 }
 
 .button-primary[data-hovered] {
-  background: var(--accent-strong);
+  background: var(--accent-hover);
 }
 
 .button-secondary {
@@ -1639,5 +1640,313 @@ select {
   .profile-section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+/* Increment D: private photo capture, review and safe-derivative inspection. */
+.image-preview-shell {
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+}
+
+.composer-shell:not(.composer-shell-inline) .image-preview-shell {
+  max-height: min(48dvh, 28rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.composer-shell:not(.composer-shell-inline)
+  .image-preview-shell::-webkit-scrollbar {
+  width: 0.5rem;
+}
+
+.composer-shell:not(.composer-shell-inline)
+  .image-preview-shell::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.composer-shell:not(.composer-shell-inline)
+  .image-preview-shell::-webkit-scrollbar-thumb {
+  border: 0.125rem solid transparent;
+  border-radius: 999px;
+  background: var(--line-strong);
+  background-clip: padding-box;
+}
+
+.image-preview-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.image-preview-summary > p,
+.image-preview-summary > div > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.image-preview-summary > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.image-preview-card,
+.image-preview-grid > li {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: var(--surface-raised);
+  padding: 0.65rem;
+}
+
+.image-preview-card > img,
+.image-preview-grid > li > img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 0.65rem;
+  background: #151a2c;
+  object-fit: cover;
+}
+
+.image-preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.image-preview-meta p {
+  margin: 0;
+}
+
+.image-preview-meta span {
+  display: grid;
+  min-width: 1.55rem;
+  min-height: 1.55rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.image-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.image-preview-actions .button {
+  min-height: 2.75rem;
+  padding-inline: 0.7rem;
+  font-size: 0.7rem;
+}
+
+.empty-inline {
+  margin: 0.8rem 0 0;
+  border: 1px dashed var(--line-strong);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.camera-overlay,
+.photo-lightbox-overlay {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  overflow-y: auto;
+  place-items: center;
+  background: rgb(3 6 16 / 88%);
+  padding: max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  backdrop-filter: blur(8px);
+}
+
+.camera-modal {
+  width: min(100%, 48rem);
+  border: 1px solid var(--line-strong);
+  border-radius: 1.15rem;
+  background: var(--surface);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.camera-title {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.025em;
+}
+
+.camera-copy,
+.camera-status,
+.camera-state {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.camera-frame,
+.camera-review {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  max-height: min(62vh, 38rem);
+  margin-top: 1rem;
+  border-radius: 0.85rem;
+  background: #02040a;
+  object-fit: contain;
+}
+
+.camera-frame {
+  aspect-ratio: 4 / 3;
+}
+
+.camera-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.camera-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.camera-state {
+  padding-block: 1rem 0.25rem;
+}
+
+.entry-media-grid {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.entry-media-multiple {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.entry-media-inspect {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  min-height: 8rem;
+  border: 0;
+  border-radius: 0.85rem;
+  background: var(--surface-raised);
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.entry-media-inspect img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 42rem;
+  aspect-ratio: 16 / 10;
+  background: var(--surface-raised);
+  object-fit: cover;
+}
+
+.entry-media-inspect.entry-media-compact img {
+  max-height: 23rem;
+}
+
+.entry-media-inspect[data-focus-visible] {
+  position: relative;
+  z-index: 1;
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -3px;
+}
+
+.photo-lightbox-modal {
+  width: min(100%, 82rem);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 1rem;
+  background: #070a13;
+  box-shadow: var(--shadow);
+}
+
+.photo-lightbox-dialog {
+  outline: none;
+}
+
+.photo-lightbox-dialog > img {
+  display: block;
+  width: 100%;
+  max-height: calc(100dvh - 8rem);
+  background: #02040a;
+  object-fit: contain;
+}
+
+.photo-lightbox-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+}
+
+.photo-lightbox-footer p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+@media (max-width: 430px) {
+  .image-preview-summary,
+  .photo-lightbox-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .image-preview-summary > div:last-child {
+    justify-content: flex-start;
+  }
+
+  .image-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .camera-modal {
+    padding: 0.85rem;
+  }
+
+  .camera-actions .button {
+    flex: 1 1 auto;
+  }
+
+  .entry-media-multiple .entry-media-inspect {
+    min-height: 7rem;
   }
 }

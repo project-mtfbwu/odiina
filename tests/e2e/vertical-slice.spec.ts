@@ -79,7 +79,7 @@ async function expectNoAxeViolations(page: Page): Promise<void> {
   expect(results.violations).toEqual([]);
 }
 
-test("@authenticated completes Odiina Increments A through C", async ({
+test("@authenticated completes Odiina Increments A through D", async ({
   context,
   page,
   request,
@@ -89,6 +89,46 @@ test("@authenticated completes Odiina Increments A through C", async ({
     process.env.ODIINA_E2E !== "1",
     "Requires a reset local Supabase stack, Mailpit and ODIINA_E2E=1.",
   );
+
+  await page.addInitScript(() => {
+    const state = window as typeof window & { __odiinaTrackStops: number };
+    const counterKey = "odiina-e2e-camera-track-stops";
+    state.__odiinaTrackStops = Number(localStorage.getItem(counterKey) ?? 0);
+    const getUserMedia = async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 640;
+      canvas.height = 480;
+      const drawing = canvas.getContext("2d");
+      if (!drawing) throw new DOMException("No canvas", "NotReadableError");
+      drawing.fillStyle = "#5942c8";
+      drawing.fillRect(0, 0, canvas.width, canvas.height);
+      const stream = canvas.captureStream(1);
+      for (const track of stream.getTracks()) {
+        const stop = track.stop.bind(track);
+        track.stop = () => {
+          state.__odiinaTrackStops += 1;
+          localStorage.setItem(counterKey, String(state.__odiinaTrackStops));
+          stop();
+        };
+      }
+      return stream;
+    };
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: {
+        getUserMedia,
+        enumerateDevices: async () => [
+          {
+            deviceId: "mock-rear-camera",
+            groupId: "mock-camera-group",
+            kind: "videoinput",
+            label: "Mock rear camera",
+            toJSON: () => ({}),
+          },
+        ],
+      },
+    });
+  });
 
   const priorMessages = await mailIds(request);
   await page.goto("/login");
@@ -294,6 +334,83 @@ test("@authenticated completes Odiina Increments A through C", async ({
     "accept",
     "image/jpeg,image/png,image/webp",
   );
+  await page.getByRole("button", { name: "Take a photo", exact: true }).click();
+  const cameraDialog = page.getByRole("dialog", { name: "Take a photo" });
+  await expect(cameraDialog).toBeVisible();
+  await expectNoAxeViolations(page);
+  await cameraDialog.getByRole("button", { name: "Open camera" }).click();
+  await expect(cameraDialog.getByLabel("Live camera preview")).toBeVisible();
+  await page.waitForFunction(
+    () =>
+      (document.querySelector("video") as HTMLVideoElement | null)?.videoWidth,
+  );
+  await cameraDialog.getByRole("button", { name: "Cancel" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __odiinaTrackStops: number })
+            .__odiinaTrackStops,
+      ),
+    )
+    .toBeGreaterThanOrEqual(1);
+  await expect(
+    page.getByRole("button", { name: "Take a photo", exact: true }),
+  ).toBeFocused();
+
+  await page.getByRole("button", { name: "Take a photo", exact: true }).click();
+  await cameraDialog.getByRole("button", { name: "Open camera" }).click();
+  await expect(cameraDialog.getByLabel("Live camera preview")).toBeVisible();
+  await page.waitForFunction(
+    () =>
+      (document.querySelector("video") as HTMLVideoElement | null)?.videoWidth,
+  );
+  await cameraDialog.getByRole("button", { name: "Capture photo" }).click();
+  await expect(cameraDialog.getByAltText("Camera photo preview")).toBeVisible();
+  await cameraDialog.getByRole("button", { name: "Retake" }).click();
+  await page.waitForFunction(
+    () =>
+      (document.querySelector("video") as HTMLVideoElement | null)?.videoWidth,
+  );
+  await cameraDialog.getByRole("button", { name: "Capture photo" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __odiinaTrackStops: number })
+            .__odiinaTrackStops,
+      ),
+    )
+    .toBeGreaterThanOrEqual(3);
+  await cameraDialog.getByRole("button", { name: "Use photo" }).click();
+  await expect(page.getByText("1 of 5 photo selected")).toBeVisible();
+  await page
+    .locator(".image-preview-grid > li")
+    .getByRole("button", { name: "Remove" })
+    .click();
+  await expect(page.locator(".image-preview-grid")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Take a photo", exact: true }).click();
+  await cameraDialog.getByRole("button", { name: "Open camera" }).click();
+  await expect(cameraDialog.getByLabel("Live camera preview")).toBeVisible();
+  await page.waitForFunction(
+    () =>
+      (document.querySelector("video") as HTMLVideoElement | null)?.videoWidth,
+  );
+  await page.goBack();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __odiinaTrackStops: number })
+            .__odiinaTrackStops,
+      ),
+    )
+    .toBeGreaterThanOrEqual(4);
+  await page.getByRole("link", { name: "Feed", exact: true }).click();
+  await expect(page.getByText(revisedBody, { exact: true })).toBeVisible();
+
   const blue = await sharp({
     create: {
       width: 640,
@@ -337,11 +454,20 @@ test("@authenticated completes Odiina Increments A through C", async ({
   const imageBackLink = page.getByRole("link", { name: "Back to Feed" });
   await expect(imageBackLink).toBeVisible();
   await expect(
-    page.getByAltText("Attached image 1 of 2").first(),
+    page.getByAltText("Photo attached to Entry, 1 of 2").first(),
   ).toBeVisible();
   await expect(
-    page.getByAltText("Attached image 2 of 2").first(),
+    page.getByAltText("Photo attached to Entry, 2 of 2").first(),
   ).toBeVisible();
+  const inspectFirstPhoto = page
+    .getByRole("button", { name: "Inspect photo 1 of 2" })
+    .first();
+  await inspectFirstPhoto.click();
+  const photoDialog = page.getByRole("dialog", { name: "Photo 1 of 2" });
+  await expect(photoDialog).toBeVisible();
+  await expectNoAxeViolations(page);
+  await photoDialog.getByRole("button", { name: "Close photo" }).click();
+  await expect(inspectFirstPhoto).toBeFocused();
 
   const imageOnlyEntryId = (await imageBackLink.getAttribute("href"))?.match(
     /entry-([0-9a-f-]{36})$/,
@@ -358,7 +484,33 @@ test("@authenticated completes Odiina Increments A through C", async ({
   ).toBeVisible();
   // Two images in the current view plus the same immutable membership in
   // revisions 2 and 1.
-  expect(await page.getByAltText(/Attached image/).count()).toBe(6);
+  expect(await page.getByAltText(/Photo attached to Entry/).count()).toBe(6);
+
+  const violet = await sharp({
+    create: {
+      width: 720,
+      height: 420,
+      channels: 3,
+      background: { r: 115, g: 65, b: 190 },
+    },
+  })
+    .jpeg()
+    .toBuffer();
+  await page
+    .locator(`a[href="/entries/${imageOnlyEntryId}?mode=edit"]`)
+    .getByText("Edit Entry", { exact: true })
+    .click();
+  await page.getByLabel("Add photos to this revision").setInputFiles({
+    name: "violet-revision.jpg",
+    mimeType: "image/jpeg",
+    buffer: violet,
+  });
+  await expect(page.getByText(/3 of 5/)).toBeVisible();
+  await page.getByRole("button", { name: "Save revision" }).click();
+  await expect(
+    page.getByRole("heading", { name: /Revision 3.*Current/ }),
+  ).toBeVisible({ timeout: 120_000 });
+  expect(await page.getByAltText(/Photo attached to Entry/).count()).toBe(10);
 
   await page.getByRole("link", { name: "Back to Feed" }).click();
   const mediaCard = page
@@ -370,7 +522,9 @@ test("@authenticated completes Odiina Increments A through C", async ({
   await expect(
     page.getByText("Text added to an image-only Entry", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByAltText("Attached image 1 of 2")).toBeVisible();
+  await expect(
+    page.getByAltText("Photo attached to Entry, 1 of 3"),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Restore Entry" }).click();
   await page.getByRole("link", { name: "Feed", exact: true }).click();
   await expect(

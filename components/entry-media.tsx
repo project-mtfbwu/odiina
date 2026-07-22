@@ -1,6 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Button,
+  Dialog,
+  DialogTrigger,
+  Heading,
+  Modal,
+  ModalOverlay,
+} from "react-aria-components";
 
 import type { EntryMedia as EntryMediaItem } from "@/lib/database/types";
 
@@ -17,7 +25,7 @@ export function EntryMedia({
   if (media.length === 0) return null;
   return (
     <div
-      className={`grid gap-2 ${media.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+      className={`entry-media-grid ${media.length > 1 ? "entry-media-multiple" : "entry-media-single"}`}
       aria-label={`${media.length} attached ${media.length === 1 ? "image" : "images"}`}
     >
       {media.map((item, index) =>
@@ -31,22 +39,60 @@ export function EntryMedia({
             Image unavailable
           </div>
         ) : (
-          // The authenticated media route always returns a stripped JPEG.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={item.attachment_id}
-            src={`/api/media/${item.attachment_id}${trash ? "?scope=trash" : ""}`}
-            alt={`Attached image ${index + 1} of ${media.length}`}
-            width={item.width}
-            height={item.height}
-            loading="lazy"
-            onError={() =>
-              setFailed((current) => new Set(current).add(item.attachment_id))
-            }
-            className={`w-full rounded-xl bg-[var(--surface-raised)] object-cover ${
-              compact ? "max-h-72" : "max-h-[42rem]"
-            }`}
-          />
+          <DialogTrigger key={item.attachment_id}>
+            <Button
+              className={`entry-media-inspect ${compact ? "entry-media-compact" : ""}`}
+              aria-label={`Inspect photo ${index + 1} of ${media.length}`}
+            >
+              {/* The authenticated media route always returns a stripped JPEG. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/api/media/${item.attachment_id}${trash ? "?scope=trash" : ""}`}
+                alt={`Photo attached to Entry, ${index + 1} of ${media.length}`}
+                width={item.width}
+                height={item.height}
+                loading="lazy"
+                onError={() =>
+                  setFailed((current) =>
+                    new Set(current).add(item.attachment_id),
+                  )
+                }
+              />
+            </Button>
+            <ModalOverlay className="photo-lightbox-overlay" isDismissable>
+              <Modal className="photo-lightbox-modal">
+                <Dialog className="photo-lightbox-dialog">
+                  {({ close }) => (
+                    <>
+                      <Heading slot="title" className="sr-only">
+                        Photo {index + 1} of {media.length}
+                      </Heading>
+                      {/* Safe display derivative; originals are never delivered. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/api/media/${item.attachment_id}${trash ? "?scope=trash" : ""}`}
+                        alt={`Photo attached to Entry, ${index + 1} of ${media.length}`}
+                        width={item.width}
+                        height={item.height}
+                      />
+                      <div className="photo-lightbox-footer">
+                        <p>
+                          Photo {index + 1} of {media.length} · Private safe
+                          derivative
+                        </p>
+                        <Button
+                          className="button button-secondary"
+                          onPress={close}
+                        >
+                          Close photo
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </Dialog>
+              </Modal>
+            </ModalOverlay>
+          </DialogTrigger>
         ),
       )}
     </div>

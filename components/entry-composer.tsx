@@ -11,8 +11,9 @@ import {
   TextArea,
   TextField,
 } from "react-aria-components";
-import { Upload } from "tus-js-client";
+import type { Upload } from "tus-js-client";
 
+import { CameraCapture } from "@/components/camera-capture";
 import {
   CalendarIcon,
   CameraIcon,
@@ -23,6 +24,12 @@ import {
   SendIcon,
   VideoIcon,
 } from "@/components/icons";
+import {
+  abortImageUploads,
+  cancelImageAttempt,
+  processImageDraft,
+  type ImageDraft,
+} from "@/lib/media/client-upload";
 import {
   acceptedImageMimeTypes,
   maximumEntryImages,
@@ -35,30 +42,6 @@ import {
 } from "@/lib/validation/timezone";
 
 const maximumLength = 100_000;
-const tusChunkSize = 6 * 1024 * 1024;
-
-type UploadStage =
-  "Selected" | "Uploading" | "Checking" | "Preparing" | "Ready" | "Failed";
-
-type SelectedImage = {
-  id: string;
-  file: File;
-  previewUrl: string;
-  progress: number;
-  stage: UploadStage;
-  attachmentId?: string;
-  error?: string;
-};
-
-type UploadAuthorization = {
-  entryId: string;
-  attachmentId: string;
-  uploadEndpoint: string;
-  uploadToken: string;
-  bucketName: string;
-  objectName: string;
-};
-
 function humanBytes(value: number) {
   return `${(value / 1024 / 1024).toFixed(1)} MiB`;
 }
@@ -80,13 +63,15 @@ export function EntryComposer({
   const chooseInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   const activeUploads = useRef(new Map<string, Upload>());
+  const draftEntryId = useRef<string | null>(null);
   const previewUrls = useRef(new Set<string>());
   const [body, setBody] = useState("");
   const [occurrenceDate, setOccurrenceDate] = useState(initialLocalDate);
   const [occurrenceTime, setOccurrenceTime] = useState(
     localTime(initialNow, timezone),
   );
-  const [images, setImages] = useState<SelectedImage[]>([]);
+  const [images, setImages] = useState<ImageDraft[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [clientRequestId, setClientRequestId] = useState(() =>
     crypto.randomUUID(),
   );
@@ -116,11 +101,11 @@ export function EntryComposer({
     const urls = previewUrls.current;
     return () => {
       for (const url of urls) URL.revokeObjectURL(url);
-      for (const upload of uploads.values()) void upload.abort();
+      void abortImageUploads(uploads);
     };
   }, []);
 
-  function updateImage(id: string, update: Partial<SelectedImage>) {
+  function updateImage(id: string, update: Partial<ImageDraft>) {
     setImages((current) =>
       current.map((image) =>
         image.id === id ? { ...image, ...update } : image,
@@ -128,15 +113,13 @@ export function EntryComposer({
     );
   }
 
-  function selectFiles(event: ChangeEvent<HTMLInputElement>) {
-    const chosen = Array.from(event.target.files ?? []);
-    event.target.value = "";
+  function addFiles(chosen: File[]) {
     setError(null);
     const room = maximumEntryImages - images.length;
     if (chosen.length > room) {
-      setError(`You can attach up to ${maximumEntryImages} images.`);
+      setError(`You can attach up to ${maximumEntryImages} photos.`);
     }
-    const accepted: SelectedImage[] = [];
+    const accepted: ImageDraft[] = [];
     for (const file of chosen.slice(0, room)) {
       if (
         !acceptedImageMimeTypes.includes(
@@ -162,6 +145,16 @@ export function EntryComposer({
     }
     setImages((current) => [...current, ...accepted]);
     setSaved(false);
+    if (accepted.length > 0) {
+      setStageAnnouncement(
+        `${accepted.length} ${accepted.length === 1 ? "photo" : "photos"} selected. Nothing has been uploaded.`,
+      );
+    }
+  }
+
+  function selectFiles(event: ChangeEvent<HTMLInputElement>) {
+    addFiles(Array.from(event.target.files ?? []));
+    event.target.value = "";
   }
 
   function removeImage(id: string) {
@@ -173,6 +166,16 @@ export function EntryComposer({
       }
       return current.filter((image) => image.id !== id);
     });
+    setStageAnnouncement("Photo removed from the selection.");
+  }
+
+  function clearImages() {
+    for (const image of images) {
+      URL.revokeObjectURL(image.previewUrl);
+      previewUrls.current.delete(image.previewUrl);
+    }
+    setImages([]);
+    setStageAnnouncement("Photo selection cleared.");
   }
 
   function moveImage(index: number, delta: -1 | 1) {
@@ -207,129 +210,21 @@ export function EntryComposer({
     return result;
   }
 
-  function uploadWithTus(
-    image: SelectedImage,
-    authorization: UploadAuthorization,
-  ) {
-    return new Promise<void>((resolve, reject) => {
-      const upload = new Upload(image.file, {
-        endpoint: authorization.uploadEndpoint,
-        headers: { "x-signature": authorization.uploadToken },
-        metadata: {
-          bucketName: authorization.bucketName,
-          objectName: authorization.objectName,
-          contentType: image.file.type,
-          cacheControl: "0",
-        },
-        chunkSize: tusChunkSize,
-        retryDelays: [0, 1000, 3000, 5000],
-        removeFingerprintOnSuccess: true,
-        storeFingerprintForResuming: false,
-        uploadDataDuringCreation: false,
-        onError: reject,
-        onProgress: (uploaded, total) => {
-          updateImage(image.id, {
-            progress: Math.round((uploaded / total) * 100),
-          });
-        },
-        onSuccess: () => resolve(),
-      });
-      activeUploads.current.set(image.id, upload);
-      upload.start();
-    }).finally(() => activeUploads.current.delete(image.id));
-  }
-
-  async function waitUntilProcessed(image: SelectedImage) {
-    for (let attempt = 0; attempt < 120; attempt += 1) {
-      const response = await fetch(
-        `/api/media/status?id=${encodeURIComponent(image.attachmentId ?? "")}`,
-        { cache: "no-store" },
-      );
-      const result = (await response.json()) as {
-        attachments?: {
-          state: string;
-          error_code: string | null;
-          media_processing_jobs?: {
-            stage: string;
-            last_error_code: string | null;
-          }[];
-        }[];
-      };
-      const status = result.attachments?.[0];
-      if (!response.ok || !status) throw new Error("Image status unavailable.");
-      const workerStage = status.media_processing_jobs?.[0]?.stage;
-      const namedStage: UploadStage =
-        workerStage === "preparing" ||
-        workerStage === "promoting" ||
-        workerStage === "cleanup"
-          ? "Preparing"
-          : "Checking";
-      if (status.state === "accepted") {
-        updateImage(image.id, { stage: "Ready", progress: 100 });
-        setStageAnnouncement(`${image.file.name} is ready.`);
-        return;
-      }
-      if (["failed", "rejected", "deleted"].includes(status.state)) {
-        throw new Error("The image did not pass private safety processing.");
-      }
-      updateImage(image.id, { stage: namedStage, progress: 100 });
-      await new Promise((resolve) => window.setTimeout(resolve, 1000));
-    }
-    throw new Error("Image processing is taking longer than expected.");
-  }
-
-  async function processImage(
-    image: SelectedImage,
-    draftEntryId: string | null,
-  ) {
-    updateImage(image.id, {
-      stage: "Uploading",
-      progress: 0,
-      error: undefined,
-    });
-    setStageAnnouncement(`${image.file.name} is uploading.`);
-    const authorization = await jsonRequest<UploadAuthorization>(
-      "/api/media/authorize",
-      {
-        entryId: draftEntryId,
-        filename: image.file.name,
-        declaredMime: image.file.type,
-        byteCount: image.file.size,
-      },
-    );
-    image.attachmentId = authorization.attachmentId;
-    updateImage(image.id, { attachmentId: authorization.attachmentId });
-    await uploadWithTus(image, authorization);
-    updateImage(image.id, { stage: "Checking", progress: 100 });
-    setStageAnnouncement(`${image.file.name} is being checked privately.`);
-    await jsonRequest("/api/media/finalize", {
-      attachmentId: authorization.attachmentId,
-    });
-    await waitUntilProcessed({
-      ...image,
-      attachmentId: authorization.attachmentId,
-    });
-    return authorization.entryId;
-  }
-
   async function cancelUploads() {
     setCancelling(true);
-    for (const upload of activeUploads.current.values())
-      await upload.abort(true);
+    await abortImageUploads(activeUploads.current);
     const ids = images.flatMap((image) =>
-      image.attachmentId ? [image.attachmentId] : [],
+      image.attachmentId && image.stage !== "Ready" ? [image.attachmentId] : [],
     );
     await Promise.allSettled(
-      ids.map((attachmentId) =>
-        jsonRequest("/api/media/cancel", { attachmentId }),
-      ),
+      ids.map((attachmentId) => cancelImageAttempt(csrfToken, attachmentId)),
     );
     setImages((current) =>
-      current.map((image) => ({
-        ...image,
-        stage: "Failed",
-        error: "Upload cancelled.",
-      })),
+      current.map((image) =>
+        image.stage === "Ready"
+          ? image
+          : { ...image, stage: "Failed", error: "Upload cancelled." },
+      ),
     );
     setBusy(false);
     setCancelling(false);
@@ -358,6 +253,7 @@ export function EntryComposer({
       setError(
         "Choose a valid local date and time. Times skipped by a daylight-saving change cannot be used.",
       );
+      setBusy(false);
       return;
     }
     try {
@@ -368,10 +264,24 @@ export function EntryComposer({
           ...occurrence,
         });
       } else {
-        let draftEntryId: string | null = null;
+        let activeDraftId =
+          draftEntryId.current ??
+          images.find((image) => image.entryId)?.entryId ??
+          null;
+        const attachmentIds: string[] = [];
         for (const image of images) {
           try {
-            draftEntryId = await processImage(image, draftEntryId);
+            const processed = await processImageDraft({
+              image,
+              entryId: activeDraftId,
+              csrfToken,
+              activeUploads: activeUploads.current,
+              update: (update) => updateImage(image.id, update),
+              announce: setStageAnnouncement,
+            });
+            activeDraftId = processed.entryId;
+            draftEntryId.current = processed.entryId;
+            attachmentIds.push(processed.attachmentId);
           } catch (caught) {
             const message =
               caught instanceof Error
@@ -381,11 +291,9 @@ export function EntryComposer({
             throw caught;
           }
         }
-        const attachmentIds = images.flatMap((image) =>
-          image.attachmentId ? [image.attachmentId] : [],
-        );
         await jsonRequest("/api/media/activate", {
-          entryId: draftEntryId,
+          clientRequestId,
+          entryId: activeDraftId,
           bodyText: body,
           attachmentIds,
           ...occurrence,
@@ -396,6 +304,7 @@ export function EntryComposer({
         previewUrls.current.delete(image.previewUrl);
       }
       setImages([]);
+      draftEntryId.current = null;
       setBody("");
       setClientRequestId(crypto.randomUUID());
       setSaved(true);
@@ -522,7 +431,7 @@ export function EntryComposer({
               <MenuItem onAction={() => chooseInput.current?.click()}>
                 <ImageIcon className="size-5" /> Choose photos
               </MenuItem>
-              <MenuItem onAction={() => cameraInput.current?.click()}>
+              <MenuItem onAction={() => setCameraOpen(true)}>
                 <CameraIcon className="size-5" /> Take photo
               </MenuItem>
               <MenuItem isDisabled>
@@ -542,7 +451,7 @@ export function EntryComposer({
         </MenuTrigger>
         <Button
           className="composer-icon-button"
-          onPress={() => cameraInput.current?.click()}
+          onPress={() => setCameraOpen(true)}
           isDisabled={busy || images.length >= maximumEntryImages}
           aria-label="Take a photo"
         >
@@ -575,6 +484,13 @@ export function EntryComposer({
           onChange={selectFiles}
           disabled={busy}
         />
+        <CameraCapture
+          isOpen={cameraOpen}
+          onOpenChange={setCameraOpen}
+          onUsePhoto={(file) => addFiles([file])}
+          onChoosePhotos={() => chooseInput.current?.click()}
+          onNativeCapture={() => cameraInput.current?.click()}
+        />
       </div>
       <p className="composer-help">
         Up to five JPEG, PNG, or WebP images, 15 MiB each. Odiina checks and
@@ -582,70 +498,94 @@ export function EntryComposer({
       </p>
 
       {images.length > 0 ? (
-        <ol className="mt-4 grid gap-3 sm:grid-cols-2">
-          {images.map((image, index) => (
-            <li
-              key={image.id}
-              className="rounded-xl border border-[var(--line)] bg-[var(--surface-raised)] p-3"
-            >
-              {/* Local object URL only; never persisted or uploaded as metadata. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={image.previewUrl}
-                alt={`Selected image ${index + 1}`}
-                className="aspect-video w-full rounded-lg object-cover"
-              />
-              <div className="mt-2 flex items-start justify-between gap-2">
-                <div className="min-w-0 text-xs">
-                  <p className="truncate font-bold">{image.file.name}</p>
-                  <p className="text-[var(--muted)]">
-                    {humanBytes(image.file.size)} · {image.stage}
-                    {image.stage === "Uploading" ? ` ${image.progress}%` : ""}
-                  </p>
-                </div>
-                <span className="rounded-full bg-[var(--accent-soft)] px-2 py-1 text-xs font-bold">
-                  {index + 1}
-                </span>
-              </div>
-              {image.stage === "Uploading" ? (
-                <progress
-                  className="mt-2 w-full"
-                  max={100}
-                  value={image.progress}
-                  aria-label={`Upload progress for ${image.file.name}`}
+        <div className="image-preview-shell">
+          <div className="image-preview-summary">
+            <p role="status">
+              {images.length} of {maximumEntryImages}{" "}
+              {images.length === 1 ? "photo" : "photos"} selected
+            </p>
+            <div>
+              <Button
+                className="button button-quiet min-h-11 px-3 text-xs"
+                onPress={() => chooseInput.current?.click()}
+                isDisabled={busy || images.length >= maximumEntryImages}
+              >
+                Add more
+              </Button>
+              <Button
+                className="button button-quiet min-h-11 px-3 text-xs text-[var(--danger)]"
+                onPress={clearImages}
+                isDisabled={busy}
+              >
+                Clear all
+              </Button>
+            </div>
+          </div>
+          <ol className="image-preview-grid">
+            {images.map((image, index) => (
+              <li
+                key={image.id}
+                className="rounded-xl border border-[var(--line)] bg-[var(--surface-raised)] p-3"
+              >
+                {/* Local object URL only; never persisted or uploaded as metadata. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image.previewUrl}
+                  alt={`Selected image ${index + 1}`}
+                  className="aspect-video w-full rounded-lg object-cover"
                 />
-              ) : null}
-              {image.error ? (
-                <p className="mt-2 text-xs text-[var(--danger)]" role="alert">
-                  {image.error}
-                </p>
-              ) : null}
-              <div className="mt-2 flex flex-wrap gap-1">
-                <Button
-                  className="button button-quiet min-h-11 px-3 text-xs"
-                  onPress={() => moveImage(index, -1)}
-                  isDisabled={busy || index === 0}
-                >
-                  Move earlier
-                </Button>
-                <Button
-                  className="button button-quiet min-h-11 px-3 text-xs"
-                  onPress={() => moveImage(index, 1)}
-                  isDisabled={busy || index === images.length - 1}
-                >
-                  Move later
-                </Button>
-                <Button
-                  className="button button-quiet min-h-11 px-3 text-xs text-[var(--danger)]"
-                  onPress={() => removeImage(image.id)}
-                  isDisabled={busy}
-                >
-                  Remove
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ol>
+                <div className="mt-2 flex items-start justify-between gap-2">
+                  <div className="min-w-0 text-xs">
+                    <p className="truncate font-bold">{image.file.name}</p>
+                    <p className="text-[var(--muted)]">
+                      {humanBytes(image.file.size)} · {image.stage}
+                      {image.stage === "Uploading" ? ` ${image.progress}%` : ""}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[var(--accent-soft)] px-2 py-1 text-xs font-bold">
+                    {index + 1}
+                  </span>
+                </div>
+                {image.stage === "Uploading" ? (
+                  <progress
+                    className="mt-2 w-full"
+                    max={100}
+                    value={image.progress}
+                    aria-label={`Upload progress for ${image.file.name}`}
+                  />
+                ) : null}
+                {image.error ? (
+                  <p className="mt-2 text-xs text-[var(--danger)]" role="alert">
+                    {image.error}
+                  </p>
+                ) : null}
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <Button
+                    className="button button-quiet min-h-11 px-3 text-xs"
+                    onPress={() => moveImage(index, -1)}
+                    isDisabled={busy || index === 0}
+                  >
+                    Move earlier
+                  </Button>
+                  <Button
+                    className="button button-quiet min-h-11 px-3 text-xs"
+                    onPress={() => moveImage(index, 1)}
+                    isDisabled={busy || index === images.length - 1}
+                  >
+                    Move later
+                  </Button>
+                  <Button
+                    className="button button-quiet min-h-11 px-3 text-xs text-[var(--danger)]"
+                    onPress={() => removeImage(image.id)}
+                    isDisabled={busy}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

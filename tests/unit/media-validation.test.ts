@@ -31,6 +31,7 @@ describe("media command validation", () => {
 
   it("rejects duplicate or more than five attachment memberships", () => {
     const base = {
+      clientRequestId: "00000000-0000-4000-8000-000000000099",
       entryId: "00000000-0000-4000-8000-000000000001",
       bodyText: "",
       occurredAt: "2026-07-20T10:00:00.000Z",

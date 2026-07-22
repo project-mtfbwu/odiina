@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await context.supabase
       .schema("app")
       .rpc("activate_media_entry", {
+        p_client_request_id: input.clientRequestId,
         p_entry_id: input.entryId,
         p_body_text: input.bodyText,
         p_attachment_ids: input.attachmentIds,

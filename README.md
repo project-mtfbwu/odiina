@@ -3,7 +3,7 @@
 Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
-This repository contains the local scaffold and the first three MVP increments.
+This repository contains the local scaffold and the first four MVP increments.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -20,6 +20,8 @@ tagline or final brand assets have been selected.
 - Signed resumable uploads into private quarantine storage
 - Fail-closed ClamAV scanning, strict decoding and metadata-stripping derivatives
 - Image-only Entries and immutable, ordered image membership per revision
+- Progressive live camera capture with review, retake and native-picker fallback
+- Private safe-derivative Feed/detail inspection with accessible focus restoration
 - Calendar recall using explicit occurrence dates
 - Private Profile identity with display name, canonical unique handle and bio
 - Private avatar/banner processing and owner-authorized delivery
@@ -78,6 +80,8 @@ See [vertical-slice-1.md](docs/implementation/vertical-slice-1.md),
 [deferred media architecture](docs/architecture/deferred-media-attachments.md).
 Increment C's identity, media-retention and statistics policies are documented
 in [increment-c-private-profile.md](docs/implementation/increment-c-private-profile.md).
+Increment D's picker, camera, retry and image-revision policies are documented
+in [increment-d-photo-capture.md](docs/implementation/increment-d-photo-capture.md).
 
 ## Local prerequisites
 

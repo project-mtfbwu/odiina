@@ -88,3 +88,17 @@ Odiina uses a security-invoker `app.request_user_id()` equivalent of
 claims fallback. This removes the ineffective Auth-schema grant that emitted
 `no privileges were granted for "auth"` while keeping identity derived solely
 from the verified request claim.
+
+## Increment D media activation and revision uploads
+
+Increment D preserves the existing attachment tables. It expands the Entry
+upload authorization command so an owner may stage a new image against an
+active Entry before creating a new immutable revision. The five-image limit is
+calculated from current-revision membership plus unattached live attempts;
+historical accepted attachments do not consume a current revision slot.
+
+Media-draft activation now takes a client request UUID and records
+`activate_media_entry` in `entry_command_receipts`. Replaying the same canonical
+activation returns the original Entry and revision; reusing the UUID with a
+different body, occurrence or ordered attachment set fails. The former
+non-idempotent function signature is removed.
