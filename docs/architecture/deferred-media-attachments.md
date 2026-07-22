@@ -1,114 +1,79 @@
-# Media and deferred video architecture
+# Media architecture and deferred video intelligence
 
-Status: the general attachment boundary and private image and voice-note
-pipelines are implemented. Video remains deferred.
+Status: private image, voice-note and video capture/processing/playback are
+implemented for local certification. Video transcription, caption generation,
+AI sampling and interpretation remain deferred.
 
 ## Domain boundary
 
-Odiina's attachment domain is media-general. Media kinds are `image`, `video`
-and `audio`. Image and audio are accepted only through their implemented narrow
-pipelines. Video stays disabled until its separate pipeline is complete.
+Odiina's attachment identity is media-general. Media kinds are `image`, `audio`
+and `video`; each is accepted only through its own narrow route and worker
+policy. Common records do not assume dimensions, duration or codecs.
+`image_metadata`, `audio_metadata` and `video_metadata` own those typed facts.
 
-The common attachment identity owns object variants without requiring image
-dimensions. Image dimensions and image-only metadata belong in
-`image_metadata`; voice duration, codec, channels, sample rate and waveform
-belong in `audio_metadata`. Video
-duration, codecs, rotation and orientation belong in video-specific metadata.
-This document defines constraints, not a database schema.
+The accepted original is private and immutable. Storage completion does not
+mean acceptance. Entry revisions freeze ordered attachment membership; one
+revision may contain up to five images plus either one voice note or one video.
 
-The original accepted video is private and immutable. An uploaded object is not
-accepted merely because storage succeeded.
+## Implemented video boundary
 
-## User journey
+- Existing-file selection on desktop and mobile.
+- Explicit browser camera permission, optional microphone permission and a
+  second explicit action before recording starts.
+- Native `capture="environment"` picker fallback.
+- Local preview, retake, discard and approval before submission.
+- Visible upload progress, cancellation, bounded in-session TUS recovery, and
+  scanning/validating/transcoding/poster/ready/failed states.
+- Maximum 250 MiB, 250 msâ€“5 minutes, 3840Ã—2160 pixel area and 60 fps source.
+- WebM VP8/VP9 + optional Opus, MP4 H.264 + optional AAC, or MOV H.264/HEVC +
+  optional AAC, with MIME, extension, signature and probe agreement.
+- Fail-closed malware scanning before probing or transcoding.
+- Rotation normalization, metadata stripping, no upscale, H.264 `yuv420p` MP4
+  bounded to 1920Ã—1080 pixel area/30 fps, and a required private JPEG poster.
+- Authenticated same-origin playback with `private, no-store` and byte ranges.
 
-- Upload an existing video from desktop or mobile.
-- Record from a supported phone or tablet through an accessible file input with
-  video capture hints.
-- Evaluate a richer MediaRecorder flow as an optional enhancement, never as the
-  only capture route.
-- Preview before submission and permit retake or discard.
-- Add optional plain-text context.
-- Show progress, cancellation and honest processing, failed, unsupported and
-  ready states.
-- Pause, resume or recover interrupted large uploads where supported.
+The browser never plays an uploaded original. It receives only the validated
+playback rendition. GPS and unnecessary descriptive/device metadata are not
+carried into derivatives. Original, playback and poster object keys remain
+private and are not placed in rendered URLs.
 
-The design must be tested on current iOS Safari and Android browser behavior,
-including permission, backgrounding, memory pressure and capture-format
-differences. Controls must remain keyboard, touch and screen-reader operable.
+## Lifecycle and operations
 
-## Upload and acceptance pipeline
+The existing signed TUS quarantine path, ClamAV scanner, pgmq job queue,
+worker-principal generation, leases and heartbeats are shared infrastructure;
+video validation and commit logic remain media-specific. The worker has one
+consumer per container plus explicit memory, CPU, process and temporary-storage
+bounds. Retry never widens validation, and a stale lease cannot commit.
 
-- Define explicit maximum duration and file size before enabling uploads.
-- Maintain a narrow container, codec and MIME policy per implemented pipeline.
-- Validate both declared MIME type and file signature.
-- Upload into private quarantine storage using a suitable resumable protocol.
-- Probe metadata in an isolated processing boundary.
-- Perform malware scanning and reject unsupported or suspicious objects.
-- Remove GPS and unnecessary metadata.
-- Normalize rotation and orientation.
-- Transcode into validated playback renditions.
-- Generate posters or thumbnails without making image metadata universal.
-- Extract audio only for an approved transcription flow.
-- Advance state atomically so uploaded bytes are never treated as ready early.
+Deletion coordination must ultimately cover quarantine remnants, originals,
+playback, posters and any later derivatives. Permanent byte deletion remains a
+separate retention increment; Trash and restore preserve owner playback today.
+Before hosted deployment, review exact container digests, FFmpeg license and
+security support, storage/bandwidth/transcoding cost, worker concurrency and
+large-file memory pressure.
 
-Playback must use a validated or transcoded rendition. Odiina must never treat
-the original uploaded bytes as safe inline playback content.
+## Deferred transcription and evidence
 
-## Object variants
+No audio extraction, transcript, caption, `transcript_input`, `ai_sample`, AI
+analysis or OpenAI call exists in Increment F. A future approved workflow must
+obtain explicit consent and bind every result to the exact accepted Attachment
+version. Evidence must cite Attachment ID, `start_ms`, `end_ms`, and the exact
+transcript segment or sampled frame. It must never claim continuous observation
+when only selected frames, clips or transcript segments were analyzed.
 
-Future object variants may include `quarantine`, `original`, `playback`,
-`thumbnail`, `audio`, `transcript_input` and `ai_sample`. Variant identity,
-provenance and generation state must be traceable to the exact accepted media
-version. These are reserved terms, not a current enum or allowlist.
+Future object variants may include `audio`, `transcript_input` and `ai_sample`,
+but those values are not accepted through current upload routes. Private media
+must never be cached by a service worker or made public through long-lived
+signed URLs.
 
-## Private playback
+## Remaining release gates
 
-Objects remain private. Download and playback authorization must be owner-scoped
-and independently tested. The design must support authorized byte range
-requests for seeking without making storage objects public.
-
-Signed URLs require short, purpose-specific expiry and leakage analysis across
-referrers, browser history, logs, copied links, proxy caches and downstream
-players. Private media must not be cached by a service worker.
-
-## Transcription and evidence
-
-A future transcript contains time-coded segments connected to an exact accepted
-media version. AI findings based on video must cite:
-
-- Attachment ID.
-- Exact accepted media version.
-- `start_ms`.
-- `end_ms`.
-- Transcript segment or sampled-frame evidence where applicable.
-
-Video interpretation must state its evidence coverage. It must never claim
-continuous observation when only selected frames, clips or transcript segments
-were analyzed. Explicit user consent is required before AI video analysis.
-
-## Lifecycle, cost and deletion
-
-Deletion coordination must cover originals, quarantine remnants, playback
-renditions, thumbnails, extracted audio, transcript inputs, transcripts, AI
-samples and derived evidence references. Partial failures must not leave
-publicly reachable objects.
-
-Architecture review must model storage, upload and playback bandwidth, scanning,
-probing, transcoding, transcription and model costs before enabling video.
-
-## Future implementation gates
-
-1. Approve limits, browser matrix, formats and codecs.
-2. Approve the general attachment, accepted-version and variant data model.
-3. Prove private resumable upload, recovery and cancellation.
-4. Prove quarantine, validation, scanning and safe transcoding.
-5. Prove authorized range playback and signed-URL containment.
-6. Prove deletion propagation across every original and derived object.
-7. Add accessible capture, preview, retake and recovery journeys.
-8. Add transcription and time-coded evidence only after explicit consent.
-9. Add AI interpretation only after evidence-coverage language is enforced.
-
-No video dependency, endpoint, control, transcoding service or production
-infrastructure is justified by this deferred document alone. The audio
-processor must not be broadened into a video pipeline merely because FFmpeg
-is present: any input containing a video stream is rejected.
+- Physical iOS Safari and Android Chromium capture/picker tests, including
+  permission denial, orientation, backgrounding and memory pressure.
+- Keyboard, screen-reader, touch, reduced-motion, high-contrast and 400% reflow
+  human review on real devices.
+- Hosted-object range and cancellation/recovery tests against the selected
+  production Storage endpoint.
+- Retention/deletion propagation for every original and derived object.
+- Cost/concurrency baselines using approved maximum-size fixtures.
+- Separate approval for transcription or evidence-linked AI.

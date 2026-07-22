@@ -19,6 +19,15 @@ export const acceptedAudioMimeTypes = [
 export const maximumAudioBytes = 25 * 1024 * 1024;
 export const minimumAudioDurationMs = 250;
 export const maximumAudioDurationMs = 10 * 60 * 1000;
+export const acceptedVideoMimeTypes = [
+  "video/webm",
+  "video/mp4",
+  "application/mp4",
+  "video/quicktime",
+] as const;
+export const maximumVideoBytes = 250 * 1024 * 1024;
+export const minimumVideoDurationMs = 250;
+export const maximumVideoDurationMs = 5 * 60 * 1000;
 export const maximumEntryAttachments = maximumEntryImages + 1;
 
 export const authorizeImageSchema = z.object({
@@ -45,6 +54,24 @@ export const authorizeAudioSchema = z
       return normalized.endsWith(".m4a") || normalized.endsWith(".mp4");
     },
     { message: "The audio filename and format do not match." },
+  );
+
+export const authorizeVideoSchema = z
+  .object({
+    entryId: z.string().uuid().nullable(),
+    filename: z.string().trim().min(1).max(180),
+    declaredMime: z.enum(acceptedVideoMimeTypes),
+    byteCount: z.number().int().min(1).max(maximumVideoBytes),
+  })
+  .refine(
+    ({ declaredMime, filename }) => {
+      const normalized = filename.toLowerCase();
+      if (declaredMime === "video/webm") return normalized.endsWith(".webm");
+      if (declaredMime === "video/quicktime")
+        return normalized.endsWith(".mov");
+      return normalized.endsWith(".mp4") || normalized.endsWith(".m4v");
+    },
+    { message: "The video filename and format do not match." },
   );
 
 export const attachmentCommandSchema = z.object({

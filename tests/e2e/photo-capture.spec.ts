@@ -11,7 +11,7 @@ async function expectAccessible(page: Page) {
 }
 
 async function expectComposerReady(page: Page) {
-  const text = page.getByLabel("Entry text (optional with photos)");
+  const text = page.getByLabel("Entry text (optional with private media)");
   await text.fill("ready");
   await expect(page.getByText("99,995 characters left")).toBeVisible();
   await text.fill("");

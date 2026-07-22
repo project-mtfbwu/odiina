@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { verifiedRequestClient } from "@/lib/auth/request-user";
+import { getServerEnvironment } from "@/lib/environment";
 import { configurationUnavailableResponse } from "@/lib/security/http-responses";
 
 const privateMediaHeaders = {
@@ -9,33 +10,6 @@ const privateMediaHeaders = {
   "x-content-type-options": "nosniff",
   vary: "Cookie",
 };
-
-function requestedRange(value: string | null, size: number) {
-  if (!value) return null;
-  const match = /^bytes=(\d*)-(\d*)$/.exec(value.trim());
-  if (!match || (!match[1] && !match[2])) return "invalid" as const;
-  let start: number;
-  let end: number;
-  if (!match[1]) {
-    const suffix = Number(match[2]);
-    if (!Number.isSafeInteger(suffix) || suffix <= 0) return "invalid" as const;
-    start = Math.max(0, size - suffix);
-    end = size - 1;
-  } else {
-    start = Number(match[1]);
-    end = match[2] ? Number(match[2]) : size - 1;
-  }
-  if (
-    !Number.isSafeInteger(start) ||
-    !Number.isSafeInteger(end) ||
-    start < 0 ||
-    end < start ||
-    start >= size
-  ) {
-    return "invalid" as const;
-  }
-  return { start, end: Math.min(end, size - 1) };
-}
 
 async function deliver(
   request: NextRequest,
@@ -66,11 +40,23 @@ async function deliver(
     !attachment ||
     !entry ||
     attachment.purpose !== "entry" ||
-    !["image", "audio"].includes(attachment.media_kind) ||
+    !["image", "audio", "video"].includes(attachment.media_kind) ||
     (trash
       ? entry.lifecycle_state !== "trashed"
       : entry.lifecycle_state !== "active")
   ) {
+    return context.applyAuthState(
+      NextResponse.json({ error: "media_not_found" }, { status: 404 }),
+    );
+  }
+  const requestedVariant = request.nextUrl.searchParams.get("variant");
+  const variant =
+    attachment.media_kind === "image"
+      ? "display"
+      : attachment.media_kind === "video" && requestedVariant === "poster"
+        ? "poster"
+        : "playback";
+  if (requestedVariant && requestedVariant !== "poster") {
     return context.applyAuthState(
       NextResponse.json({ error: "media_not_found" }, { status: 404 }),
     );
@@ -80,7 +66,7 @@ async function deliver(
     .from("attachment_objects")
     .select("bucket_id,object_key")
     .eq("attachment_id", attachmentId)
-    .eq("variant", attachment.media_kind === "audio" ? "playback" : "display")
+    .eq("variant", variant)
     .eq("state", "verified")
     .single();
   if (objectError || !object) {
@@ -88,48 +74,66 @@ async function deliver(
       NextResponse.json({ error: "media_not_ready" }, { status: 404 }),
     );
   }
-  const { data: blob, error: downloadError } = await context.supabase.storage
-    .from(object.bucket_id)
-    .download(object.object_key);
-  if (downloadError || !blob) {
+  const { data: sessionData } = await context.supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    return context.applyAuthState(
+      NextResponse.json({ error: "authentication_required" }, { status: 401 }),
+    );
+  }
+  const environment = getServerEnvironment();
+  const objectUrl = new URL(
+    `/storage/v1/object/authenticated/${encodeURIComponent(object.bucket_id)}/${object.object_key
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")}`,
+    environment.SUPABASE_URL,
+  );
+  const canRange = attachment.media_kind !== "image" && variant === "playback";
+  const upstream = await fetch(objectUrl, {
+    method: head ? "HEAD" : "GET",
+    headers: {
+      apikey: environment.SUPABASE_PUBLISHABLE_KEY,
+      authorization: `Bearer ${accessToken}`,
+      ...(canRange && request.headers.get("range")
+        ? { range: request.headers.get("range") as string }
+        : {}),
+    },
+    cache: "no-store",
+  });
+  if (!upstream.ok && upstream.status !== 206 && upstream.status !== 416) {
     return context.applyAuthState(
       NextResponse.json({ error: "media_unavailable" }, { status: 404 }),
     );
   }
-  const size = blob.size;
   const contentType =
-    attachment.media_kind === "audio" ? "audio/mp4" : "image/jpeg";
-  const range =
-    attachment.media_kind === "audio"
-      ? requestedRange(request.headers.get("range"), size)
-      : null;
-  if (range === "invalid") {
-    return context.applyAuthState(
-      new NextResponse(null, {
-        status: 416,
-        headers: {
-          ...privateMediaHeaders,
-          "accept-ranges": "bytes",
-          "content-range": `bytes */${size}`,
-        },
-      }),
-    );
-  }
-  const selected = range ? blob.slice(range.start, range.end + 1) : blob;
+    variant === "poster" || attachment.media_kind === "image"
+      ? "image/jpeg"
+      : attachment.media_kind === "audio"
+        ? "audio/mp4"
+        : "video/mp4";
   return context.applyAuthState(
-    new NextResponse(head ? null : selected.stream(), {
-      status: range ? 206 : 200,
+    new NextResponse(head ? null : upstream.body, {
+      status: upstream.status,
       headers: {
         ...privateMediaHeaders,
         "content-type": contentType,
-        "content-length": String(selected.size),
         "content-disposition": "inline",
-        ...(attachment.media_kind === "audio"
+        ...(upstream.headers.get("content-length")
+          ? {
+              "content-length": upstream.headers.get(
+                "content-length",
+              ) as string,
+            }
+          : {}),
+        ...(canRange
           ? {
               "accept-ranges": "bytes",
-              ...(range
+              ...(upstream.headers.get("content-range")
                 ? {
-                    "content-range": `bytes ${range.start}-${range.end}/${size}`,
+                    "content-range": upstream.headers.get(
+                      "content-range",
+                    ) as string,
                   }
                 : {}),
             }

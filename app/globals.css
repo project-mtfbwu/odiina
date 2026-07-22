@@ -1878,6 +1878,140 @@ select {
   }
 }
 
+/* Increment F: private video capture, local review and safe playback. */
+.video-capture-modal {
+  width: min(760px, calc(100vw - 2rem));
+}
+
+.video-audio-choice {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.video-audio-choice input {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.video-live-state,
+.video-review,
+.video-draft-card,
+.video-player {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.video-live-preview,
+.video-review-player,
+.video-player video {
+  display: block;
+  width: 100%;
+  max-height: min(68vh, 640px);
+  border-radius: 0.875rem;
+  background: #050708;
+  object-fit: contain;
+}
+
+.video-recording-row,
+.video-review-meta,
+.video-player-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.video-live-state progress,
+.video-draft-card progress {
+  width: 100%;
+  accent-color: var(--accent-strong);
+}
+
+.video-draft-card,
+.video-player {
+  margin-top: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface-raised);
+  padding: 0.875rem;
+}
+
+.video-player-frame {
+  position: relative;
+  display: grid;
+  max-height: 680px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 0.875rem;
+  background: #050708;
+}
+
+.video-player-frame video {
+  height: 100%;
+  max-height: 680px;
+}
+
+.video-duration-badge {
+  position: absolute;
+  right: 0.625rem;
+  bottom: 3.25rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 78%);
+  padding: 0.2rem 0.5rem;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.video-player-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
+.video-player-compact {
+  padding: 0.625rem;
+}
+
+@media (max-width: 430px) {
+  .video-capture-modal {
+    width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .video-live-preview,
+  .video-review-player,
+  .video-player video {
+    max-height: 52dvh;
+  }
+
+  .video-live-state .camera-actions .button,
+  .video-review .camera-actions .button {
+    flex: 1 1 9rem;
+  }
+}
+
+@media (max-width: 350px) {
+  .video-capture-modal {
+    width: calc(100vw - 0.5rem);
+    padding: 0.875rem;
+  }
+
+  .video-recording-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 /* Increment D: private photo capture, review and safe-derivative inspection. */
 .image-preview-shell {
   margin-top: 0.85rem;

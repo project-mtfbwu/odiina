@@ -115,17 +115,17 @@ port = 54324
 [storage]
 enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
-file_size_limit = "50MiB"
+file_size_limit = "300MiB"
 
 [storage.buckets.odiina-quarantine]
 public = false
-file_size_limit = "25MiB"
-allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "audio/webm", "audio/ogg", "audio/mp4", "audio/x-m4a"]
+file_size_limit = "250MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "audio/webm", "audio/ogg", "audio/mp4", "audio/x-m4a", "video/webm", "video/mp4", "application/mp4", "video/quicktime"]
 
 [storage.buckets.odiina-originals]
 public = false
-file_size_limit = "25MiB"
-allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "audio/webm", "audio/ogg", "audio/mp4", "audio/x-m4a"]
+file_size_limit = "250MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "audio/webm", "audio/ogg", "audio/mp4", "audio/x-m4a", "video/webm", "video/mp4", "video/quicktime"]
 
 [storage.buckets.odiina-display]
 public = false
@@ -139,8 +139,13 @@ allowed_mime_types = ["image/jpeg"]
 
 [storage.buckets.odiina-playback]
 public = false
-file_size_limit = "12MiB"
-allowed_mime_types = ["audio/mp4"]
+file_size_limit = "180MiB"
+allowed_mime_types = ["audio/mp4", "video/mp4"]
+
+[storage.buckets.odiina-posters]
+public = false
+file_size_limit = "2MiB"
+allowed_mime_types = ["image/jpeg"]
 
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]

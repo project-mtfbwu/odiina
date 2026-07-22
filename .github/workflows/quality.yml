@@ -38,7 +38,7 @@ jobs:
           version: 2.109.1
       - run: supabase start
       - run: supabase db reset --local
-      - run: supabase test db
+      - run: supabase test db supabase/tests
 
   browser:
     runs-on: ubuntu-latest
@@ -72,6 +72,7 @@ jobs:
           echo "ODIINA_FEATURE_UPLOADS=true" >> "$GITHUB_ENV"
           echo "ODIINA_FEATURE_IMAGE_UPLOADS=true" >> "$GITHUB_ENV"
           echo "ODIINA_FEATURE_AUDIO_UPLOADS=true" >> "$GITHUB_ENV"
+          echo "ODIINA_FEATURE_VIDEO_UPLOADS=true" >> "$GITHUB_ENV"
           echo "ODIINA_FEATURE_WORKER=true" >> "$GITHUB_ENV"
           echo "ODIINA_MEDIA_WORKER_EMAIL=ci-media-worker@odiina.invalid" >> "$GITHUB_ENV"
           WORKER_PASSWORD="$(openssl rand -hex 24)"
@@ -81,6 +82,7 @@ jobs:
       - run: pnpm media:scanner
       - run: pnpm test:scanner
       - run: pnpm test:audio
+      - run: pnpm test:video
       - run: pnpm media:worker:bootstrap
       - run: docker compose -f compose.media.yml --profile worker up -d media-worker
       - run: pnpm exec playwright install --with-deps chromium

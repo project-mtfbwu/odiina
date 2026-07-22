@@ -6,12 +6,15 @@ import { Button, Label, TextArea, TextField } from "react-aria-components";
 import type { Upload } from "tus-js-client";
 
 import { CameraCapture } from "@/components/camera-capture";
+import { VideoCapture } from "@/components/video-capture";
+import { VideoPlayer } from "@/components/video-player";
 import { VoiceCapture } from "@/components/voice-capture";
 import { VoicePlayer } from "@/components/voice-player";
 import type {
   EntryAudioMedia,
   EntryImageMedia,
   EntryMedia,
+  EntryVideoMedia,
 } from "@/lib/database/types";
 import {
   processAudioDraft,
@@ -24,6 +27,11 @@ import {
 } from "@/lib/media/client-upload";
 import { formatVoiceDuration } from "@/lib/media/recorder";
 import {
+  processVideoDraft,
+  type VideoDraft,
+} from "@/lib/media/client-video-upload";
+import { formatVideoDuration } from "@/lib/media/video-recorder";
+import {
   acceptedAudioMimeTypes,
   acceptedImageMimeTypes,
   maximumAudioBytes,
@@ -31,6 +39,10 @@ import {
   maximumEntryImages,
   maximumImageBytes,
   minimumAudioDurationMs,
+  acceptedVideoMimeTypes,
+  maximumVideoBytes,
+  maximumVideoDurationMs,
+  minimumVideoDurationMs,
 } from "@/lib/validation/media";
 import {
   localCivilDate,
@@ -46,6 +58,10 @@ type EditorVoiceItem =
   | { kind: "existing"; media: EntryAudioMedia }
   | { kind: "draft"; draft: AudioDraft };
 
+type EditorVideoItem =
+  | { kind: "existing"; media: EntryVideoMedia }
+  | { kind: "draft"; draft: VideoDraft };
+
 function initialEditorMedia(media: EntryMedia[]): EditorMediaItem[] {
   return media
     .filter((item) => item.media_kind === "image")
@@ -59,6 +75,11 @@ function initialEditorMedia(media: EntryMedia[]): EditorMediaItem[] {
 function initialEditorVoice(media: EntryMedia[]): EditorVoiceItem | null {
   const voice = media.find((item) => item.media_kind === "audio");
   return voice ? { kind: "existing", media: voice } : null;
+}
+
+function initialEditorVideo(media: EntryMedia[]): EditorVideoItem | null {
+  const video = media.find((item) => item.media_kind === "video");
+  return video ? { kind: "existing", media: video } : null;
 }
 
 export function EntryEditor({
@@ -88,6 +109,9 @@ export function EntryEditor({
   const chooseInput = useRef<HTMLInputElement>(null);
   const nativeCameraInput = useRef<HTMLInputElement>(null);
   const audioInput = useRef<HTMLInputElement>(null);
+  const videoInput = useRef<HTMLInputElement>(null);
+  const nativeVideoInput = useRef<HTMLInputElement>(null);
+  const videoPreview = useRef<HTMLVideoElement>(null);
   const activeUploads = useRef(new Map<string, Upload>());
   const previewUrls = useRef(new Set<string>());
   const [body, setBody] = useState(initialBody);
@@ -96,6 +120,9 @@ export function EntryEditor({
   );
   const [voice, setVoice] = useState<EditorVoiceItem | null>(() =>
     initialEditorVoice(currentMedia),
+  );
+  const [video, setVideo] = useState<EditorVideoItem | null>(() =>
+    initialEditorVideo(currentMedia),
   );
   const initialOccurrenceDate = localCivilDate(
     new Date(initialOccurredAt),
@@ -110,6 +137,7 @@ export function EntryEditor({
   const [busy, setBusy] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const remaining = 100_000 - Array.from(body).length;
@@ -128,16 +156,23 @@ export function EntryEditor({
       ? voice.media.attachment_id
       : `draft:${voice.draft.id}`
     : "";
+  const videoIdentity = video
+    ? video.kind === "existing"
+      ? video.media.attachment_id
+      : `draft:${video.draft.id}`
+    : "";
   const initialImages = currentMedia.filter(
     (item) => item.media_kind === "image",
   );
   const initialVoice = currentMedia.find((item) => item.media_kind === "audio");
+  const initialVideo = currentMedia.find((item) => item.media_kind === "video");
   const changed =
     body !== initialBody ||
     occurrenceChanged ||
     mediaIdentity !==
       initialImages.map((item) => item.attachment_id).join(",") ||
-    voiceIdentity !== (initialVoice?.attachment_id ?? "");
+    voiceIdentity !== (initialVoice?.attachment_id ?? "") ||
+    videoIdentity !== (initialVideo?.attachment_id ?? "");
 
   useEffect(() => {
     const uploads = activeUploads.current;
@@ -173,7 +208,21 @@ export function EntryEditor({
     );
   }
 
+  function updateVideoDraft(update: Partial<VideoDraft>) {
+    setVideo((current) =>
+      current?.kind === "draft"
+        ? { ...current, draft: { ...current.draft, ...update } }
+        : current,
+    );
+  }
+
   function addVoice(file: File, durationMs: number) {
+    if (video) {
+      setError(
+        "A voice note and video cannot share one revision. Remove the video first.",
+      );
+      return;
+    }
     if (
       !acceptedAudioMimeTypes.includes(
         file.type as (typeof acceptedAudioMimeTypes)[number],
@@ -258,6 +307,142 @@ export function EntryEditor({
     setAnnouncement("Voice note removed from this unsaved revision.");
   }
 
+  async function videoFileMetadata(file: File) {
+    const url = URL.createObjectURL(file);
+    try {
+      return await new Promise<{
+        durationMs: number;
+        width: number;
+        height: number;
+        hasAudio: boolean | null;
+      }>((resolve, reject) => {
+        const element = document.createElement("video") as HTMLVideoElement & {
+          audioTracks?: { length: number };
+          mozHasAudio?: boolean;
+          webkitAudioDecodedByteCount?: number;
+        };
+        element.preload = "metadata";
+        element.onloadedmetadata = () => {
+          if (
+            !Number.isFinite(element.duration) ||
+            !element.videoWidth ||
+            !element.videoHeight
+          ) {
+            reject(new Error("video_metadata_unavailable"));
+            return;
+          }
+          resolve({
+            durationMs: Math.round(element.duration * 1000),
+            width: element.videoWidth,
+            height: element.videoHeight,
+            hasAudio: element.audioTracks
+              ? element.audioTracks.length > 0
+              : typeof element.mozHasAudio === "boolean"
+                ? element.mozHasAudio
+                : typeof element.webkitAudioDecodedByteCount === "number"
+                  ? element.webkitAudioDecodedByteCount > 0
+                  : null,
+          });
+        };
+        element.onerror = () => reject(new Error("video_metadata_unavailable"));
+        element.src = url;
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  function addVideo(
+    file: File,
+    durationMs: number,
+    hasAudio: boolean | null,
+    width = 0,
+    height = 0,
+  ) {
+    if (voice) {
+      setError(
+        "A video and voice note cannot share one revision. Remove the voice note first.",
+      );
+      return;
+    }
+    if (
+      !acceptedVideoMimeTypes.includes(
+        file.type as (typeof acceptedVideoMimeTypes)[number],
+      )
+    ) {
+      setError("Choose WebM, MP4, M4V, or MOV video only.");
+      return;
+    }
+    if (file.size < 1 || file.size > maximumVideoBytes) {
+      setError("A video must be no larger than 250 MiB.");
+      return;
+    }
+    if (
+      durationMs < minimumVideoDurationMs ||
+      durationMs > maximumVideoDurationMs
+    ) {
+      setError(
+        "A video must be between a moment and five minutes long. Odiina never trims it silently.",
+      );
+      return;
+    }
+    if (video?.kind === "draft") {
+      URL.revokeObjectURL(video.draft.previewUrl);
+      previewUrls.current.delete(video.draft.previewUrl);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    previewUrls.current.add(previewUrl);
+    setVideo({
+      kind: "draft",
+      draft: {
+        id: crypto.randomUUID(),
+        file,
+        previewUrl,
+        durationMs,
+        width,
+        height,
+        hasAudio,
+        progress: 0,
+        stage: "Selected",
+      },
+    });
+    setError(null);
+    setAnnouncement(
+      video
+        ? "A replacement video is selected for this unsaved revision. Historical video remains unchanged."
+        : "A video is selected for this unsaved revision.",
+    );
+  }
+
+  async function selectVideoFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const metadata = await videoFileMetadata(file);
+      addVideo(
+        file,
+        metadata.durationMs,
+        metadata.hasAudio,
+        metadata.width,
+        metadata.height,
+      );
+    } catch {
+      setError(
+        "Odiina could not review this video locally. Choose another supported file.",
+      );
+    }
+  }
+
+  function removeVideo() {
+    if (video?.kind === "draft") {
+      URL.revokeObjectURL(video.draft.previewUrl);
+      previewUrls.current.delete(video.draft.previewUrl);
+    }
+    setVideo(null);
+    setAnnouncement("Video removed from this unsaved revision.");
+  }
+
   function addFiles(files: File[]) {
     setError(null);
     const room = maximumEntryImages - media.length;
@@ -332,7 +517,7 @@ export function EntryEditor({
   async function save() {
     if (
       !changed ||
-      (!body.trim() && media.length === 0 && !voice) ||
+      (!body.trim() && media.length === 0 && !voice && !video) ||
       remaining < 0 ||
       busy
     ) {
@@ -402,6 +587,28 @@ export function EntryEditor({
           throw caught;
         }
       }
+      if (video?.kind === "existing") {
+        attachmentIds.push(video.media.attachment_id);
+      } else if (video?.kind === "draft") {
+        try {
+          const processed = await processVideoDraft({
+            video: video.draft,
+            entryId,
+            csrfToken,
+            activeUploads: activeUploads.current,
+            update: updateVideoDraft,
+            announce: setAnnouncement,
+          });
+          attachmentIds.push(processed.attachmentId);
+        } catch (caught) {
+          const message =
+            caught instanceof Error
+              ? caught.message
+              : "Odiina could not process this video.";
+          updateVideoDraft({ stage: "Failed", error: message });
+          throw caught;
+        }
+      }
       const response = await fetch(`/api/entries/${entryId}`, {
         method: "PATCH",
         headers: {
@@ -443,8 +650,8 @@ export function EntryEditor({
         Edit Entry
       </h2>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        Odiina preserves the current version. Text, time, photos and voice-note
-        changes create a new immutable revision.
+        Odiina preserves the current version. Text, time, photos, voice-note and
+        video changes create a new immutable revision.
       </p>
       {error ? (
         <div className="form-error my-4" role="alert">
@@ -506,6 +713,7 @@ export function EntryEditor({
               className="button button-secondary"
               onPress={() => {
                 setVoiceOpen(false);
+                setVideoOpen(false);
                 setCameraOpen(true);
               }}
               isDisabled={busy || media.length >= maximumEntryImages}
@@ -635,16 +843,17 @@ export function EntryEditor({
               className="button button-secondary"
               onPress={() => {
                 setCameraOpen(false);
+                setVideoOpen(false);
                 setVoiceOpen(true);
               }}
-              isDisabled={busy}
+              isDisabled={busy || Boolean(video)}
             >
               {voice ? "Record replacement" : "Record voice note"}
             </Button>
             <Button
               className="button button-secondary"
               onPress={() => audioInput.current?.click()}
-              isDisabled={busy}
+              isDisabled={busy || Boolean(video)}
             >
               {voice ? "Choose replacement" : "Choose audio file"}
             </Button>
@@ -659,7 +868,7 @@ export function EntryEditor({
             voice ? "Choose a replacement voice note" : "Choose a voice note"
           }
           onChange={(event) => void selectAudioFile(event)}
-          disabled={busy}
+          disabled={busy || Boolean(video)}
         />
         <VoiceCapture
           isOpen={voiceOpen}
@@ -720,6 +929,142 @@ export function EntryEditor({
         )}
       </section>
 
+      <section
+        className="voice-editor-section"
+        aria-labelledby="edit-video-heading"
+      >
+        <div className="image-preview-summary">
+          <div>
+            <h3 id="edit-video-heading" className="m-0 text-sm font-bold">
+              Private video
+            </h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              One per revision, and not with a standalone voice note. Replacing
+              or removing preserves history.
+            </p>
+          </div>
+          <div>
+            <Button
+              className="button button-secondary"
+              onPress={() => {
+                setCameraOpen(false);
+                setVoiceOpen(false);
+                setVideoOpen(true);
+              }}
+              isDisabled={busy || Boolean(voice)}
+            >
+              {video ? "Record replacement" : "Record video"}
+            </Button>
+            <Button
+              className="button button-secondary"
+              onPress={() => videoInput.current?.click()}
+              isDisabled={busy || Boolean(voice)}
+            >
+              {video ? "Choose replacement" : "Choose video"}
+            </Button>
+          </div>
+        </div>
+        <input
+          ref={videoInput}
+          className="sr-only"
+          type="file"
+          accept={acceptedVideoMimeTypes.join(",")}
+          aria-label={video ? "Choose a replacement video" : "Choose a video"}
+          onChange={(event) => void selectVideoFile(event)}
+          disabled={busy || Boolean(voice)}
+        />
+        <input
+          ref={nativeVideoInput}
+          className="sr-only"
+          type="file"
+          accept="video/*"
+          capture="environment"
+          aria-label="Record a video with the device camera picker"
+          onChange={(event) => void selectVideoFile(event)}
+          disabled={busy || Boolean(voice)}
+        />
+        <VideoCapture
+          isOpen={videoOpen}
+          onOpenChange={setVideoOpen}
+          onUseVideo={(file, durationMs, hasAudio) =>
+            addVideo(file, durationMs, hasAudio)
+          }
+          onChooseVideo={() => videoInput.current?.click()}
+          onNativeCapture={() => nativeVideoInput.current?.click()}
+        />
+        {video ? (
+          <div className="video-draft-card mt-3">
+            {video.kind === "existing" ? (
+              <>
+                <p className="voice-player-label">Current ready video</p>
+                <VideoPlayer media={[video.media]} />
+              </>
+            ) : (
+              <>
+                <div className="voice-player-topline">
+                  <p className="voice-player-label">Unsaved video draft</p>
+                  <span>{formatVideoDuration(video.draft.durationMs)}</span>
+                </div>
+                <video
+                  ref={videoPreview}
+                  className="video-review-player"
+                  src={video.draft.previewUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  aria-label="Review replacement video draft"
+                />
+                <div className="video-review-meta">
+                  {video.draft.hasAudio === null
+                    ? "Audio presence will be verified privately"
+                    : video.draft.hasAudio
+                      ? "With audio"
+                      : "Silent"}
+                </div>
+                <Button
+                  className="button button-quiet mt-2 min-h-11 px-3 text-xs"
+                  onPress={() => {
+                    if (!videoPreview.current) return;
+                    videoPreview.current.pause();
+                    videoPreview.current.currentTime = 0;
+                  }}
+                  isDisabled={busy}
+                >
+                  Restart video preview
+                </Button>
+                <div className="voice-draft-status" role="status">
+                  <span>{video.draft.stage}</span>
+                  {video.draft.stage === "Uploading" ? (
+                    <span>{video.draft.progress}%</span>
+                  ) : null}
+                </div>
+                {video.draft.stage === "Uploading" ? (
+                  <progress
+                    max={100}
+                    value={video.draft.progress}
+                    aria-label="Replacement video upload progress"
+                  />
+                ) : null}
+                {video.draft.error ? (
+                  <p className="voice-player-error" role="alert">
+                    {video.draft.error}
+                  </p>
+                ) : null}
+              </>
+            )}
+            <Button
+              className="button button-quiet mt-3 min-h-11 px-3 text-xs text-[var(--danger)]"
+              onPress={removeVideo}
+              isDisabled={busy}
+            >
+              Remove video from this revision
+            </Button>
+          </div>
+        ) : (
+          <p className="empty-inline">No video in this revision.</p>
+        )}
+      </section>
+
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs text-[var(--muted)]">
           {remaining.toLocaleString("en")} characters left
@@ -737,7 +1082,7 @@ export function EntryEditor({
             onPress={() => void save()}
             isDisabled={
               !changed ||
-              (!body.trim() && media.length === 0 && !voice) ||
+              (!body.trim() && media.length === 0 && !voice && !video) ||
               remaining < 0 ||
               busy
             }
@@ -748,7 +1093,8 @@ export function EntryEditor({
                     (item) =>
                       item.kind === "draft" && item.draft.stage === "Failed",
                   ) ||
-                  (voice?.kind === "draft" && voice.draft.stage === "Failed")
+                  (voice?.kind === "draft" && voice.draft.stage === "Failed") ||
+                  (video?.kind === "draft" && video.draft.stage === "Failed")
                 ? "Retry and save"
                 : "Save revision"}
           </Button>

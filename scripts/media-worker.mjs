@@ -8,6 +8,10 @@ import {
   prepareSafeAudio,
 } from "./media/audio-safety.mjs";
 import { prepareSafeImage, sha256 } from "./media/image-safety.mjs";
+import {
+  assertVideoProcessorHealthy,
+  prepareSafeVideo,
+} from "./media/video-safety.mjs";
 
 const required = [
   "SUPABASE_URL",
@@ -192,6 +196,68 @@ async function processJob(job) {
       p_waveform_peaks: prepared.waveformPeaks,
     });
     rpcError(commit.error);
+  } else if (job.media_kind === "video") {
+    await heartbeat(job, "validating");
+    const prepared = await prepareSafeVideo(input, {
+      declaredMime: job.declared_mime,
+      originalFilename: job.original_filename,
+      ...audioProcessor,
+    });
+    await heartbeat(job, "transcoding");
+    const detectedOriginalMime =
+      prepared.container === "webm"
+        ? "video/webm"
+        : prepared.container === "mov"
+          ? "video/quicktime"
+          : "video/mp4";
+    await uploadImmutable(
+      "odiina-originals",
+      job.original_key,
+      input,
+      detectedOriginalMime,
+    );
+    await uploadImmutable(
+      "odiina-playback",
+      job.playback_key,
+      prepared.playback,
+      "video/mp4",
+    );
+    await heartbeat(job, "poster");
+    await uploadImmutable(
+      "odiina-posters",
+      job.poster_key,
+      prepared.poster,
+      "image/jpeg",
+    );
+    await heartbeat(job, "promoting");
+    const commit = await supabase.schema("app").rpc("commit_processed_video", {
+      p_job_id: job.job_id,
+      p_lease_token: job.lease_token,
+      p_input_container: prepared.container,
+      p_input_video_codec: prepared.videoCodec,
+      p_input_audio_codec: prepared.audioCodec,
+      p_input_duration_ms: prepared.durationMs,
+      p_input_width: prepared.width,
+      p_input_height: prepared.height,
+      p_input_frame_rate: prepared.frameRate,
+      p_input_rotation: prepared.rotation,
+      p_has_audio: prepared.hasAudio,
+      p_quarantine_sha256: `\\x${quarantineHash.toString("hex")}`,
+      p_quarantine_bytes: input.length,
+      p_original_sha256: `\\x${quarantineHash.toString("hex")}`,
+      p_original_bytes: input.length,
+      p_playback_sha256: `\\x${sha256(prepared.playback).toString("hex")}`,
+      p_playback_bytes: prepared.playback.length,
+      p_playback_duration_ms: prepared.playbackDurationMs,
+      p_playback_width: prepared.playbackWidth,
+      p_playback_height: prepared.playbackHeight,
+      p_playback_frame_rate: prepared.playbackFrameRate,
+      p_poster_sha256: `\\x${sha256(prepared.poster).toString("hex")}`,
+      p_poster_bytes: prepared.poster.length,
+      p_poster_width: prepared.posterWidth,
+      p_poster_height: prepared.posterHeight,
+    });
+    rpcError(commit.error);
   } else {
     throw new Error("media_kind_unimplemented");
   }
@@ -234,6 +300,22 @@ async function fail(job, error) {
     "audio_decode_empty",
     "audio_playback_invalid",
     "audio_playback_duration_mismatch",
+    "unsupported_video_signature",
+    "video_declaration_mismatch",
+    "unexpected_video_stream",
+    "unsupported_video_codec",
+    "video_too_short",
+    "video_duration_exceeded",
+    "video_resolution_exceeded",
+    "video_frame_rate_exceeded",
+    "video_pixel_format_unsupported",
+    "video_hdr_unsupported",
+    "video_source_size_invalid",
+    "video_playback_size_invalid",
+    "video_playback_invalid",
+    "video_playback_limits_invalid",
+    "video_metadata_not_stripped",
+    "video_poster_invalid",
   ].includes(code);
   const retryable = [
     "scanner_timeout",
@@ -244,6 +326,10 @@ async function fail(job, error) {
     "audio_processor_timeout",
     "audio_processor_unavailable",
     "audio_processor_failed",
+    "video_processor_timeout",
+    "video_processor_unavailable",
+    "video_processor_failed",
+    "video_probe_resource_limit",
   ].includes(code);
   const result = await supabase.schema("app").rpc("fail_media_job", {
     p_job_id: job.job_id,
@@ -261,6 +347,7 @@ async function fail(job, error) {
 }
 
 await assertAudioProcessorHealthy(audioProcessor);
+await assertVideoProcessorHealthy(audioProcessor);
 
 const login = await supabase.auth.signInWithPassword({
   email: process.env.ODIINA_MEDIA_WORKER_EMAIL,

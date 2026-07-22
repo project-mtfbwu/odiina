@@ -29,6 +29,11 @@ services:
     depends_on:
       clamav:
         condition: service_healthy
+    mem_limit: 1536m
+    cpus: 2
+    pids_limit: 256
+    tmpfs:
+      - /tmp:size=768m,mode=1777
     restart: unless-stopped
 
 volumes:

@@ -22,19 +22,19 @@ export default defineConfig({
     {
       name: "mobile-320",
       grepInvert:
-        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice|@video/,
       use: { viewport: { width: 320, height: 720 } },
     },
     {
       name: "mobile-390",
       grepInvert:
-        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice|@video/,
       use: { viewport: { width: 390, height: 844 } },
     },
     {
       name: "tablet-768",
       grepInvert:
-        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice|@video/,
       use: {
         browserName: "chromium",
         hasTouch: true,
@@ -45,19 +45,19 @@ export default defineConfig({
     {
       name: "desktop-960",
       grepInvert:
-        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice|@video/,
       use: { viewport: { width: 960, height: 900 } },
     },
     {
       name: "desktop-1200",
       grepInvert:
-        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice|@video/,
       use: { viewport: { width: 1200, height: 900 } },
     },
     {
       name: "desktop-1440",
       grepInvert:
-        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice/,
+        /@authenticated|@calendar|@photo-layout|@camera-capability|@voice|@video/,
       use: { viewport: { width: 1440, height: 1000 } },
     },
     {
@@ -250,6 +250,82 @@ export default defineConfig({
         browserName: "chromium",
         hasTouch: true,
         isMobile: true,
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    ...[320, 390, 768, 960, 1200, 1440].map((width) => ({
+      name: `video-layout-${width}`,
+      grep: /@video-layout/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium" as const,
+        hasTouch: width <= 768,
+        isMobile: width <= 768,
+        permissions: ["camera", "microphone"],
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+          ],
+        },
+        storageState: "test-results/calendar-auth.json",
+        viewport: {
+          width,
+          height: width <= 390 ? 844 : width <= 768 ? 1024 : 1000,
+        },
+      },
+    })),
+    {
+      name: "video-capability-mobile",
+      grep: /@video-capability/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        permissions: ["camera", "microphone"],
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+          ],
+        },
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    {
+      name: "video-journey-desktop",
+      grep: /@video-journey/,
+      dependencies: ["calendar-setup"],
+      use: {
+        permissions: ["camera", "microphone"],
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+          ],
+        },
+        storageState: "test-results/calendar-auth.json",
+        viewport: { width: 1440, height: 1000 },
+      },
+    },
+    {
+      name: "video-journey-mobile",
+      grep: /@video-journey/,
+      dependencies: ["calendar-setup"],
+      use: {
+        browserName: "chromium",
+        hasTouch: true,
+        isMobile: true,
+        permissions: ["camera", "microphone"],
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+          ],
+        },
         storageState: "test-results/calendar-auth.json",
         viewport: { width: 390, height: 844 },
       },

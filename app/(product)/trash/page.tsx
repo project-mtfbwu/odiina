@@ -6,6 +6,7 @@ import { RestoreEntryButton } from "@/components/restore-entry-button";
 import { EntryMedia } from "@/components/entry-media";
 import { StatusCard } from "@/components/status-card";
 import { VoicePlayer } from "@/components/voice-player";
+import { VideoPlayer } from "@/components/video-player";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
 import { getFeedPage } from "@/lib/database/queries";
 
@@ -23,9 +24,11 @@ function mediaSummary(
 ) {
   const images = media.filter((item) => item.media_kind === "image").length;
   const hasVoice = media.some((item) => item.media_kind === "audio");
+  const hasVideo = media.some((item) => item.media_kind === "video");
   return [
     images > 0 ? `${images} ${images === 1 ? "photo" : "photos"}` : null,
     hasVoice ? "Voice note" : null,
+    hasVideo ? "Video" : null,
   ]
     .filter(Boolean)
     .join(" and ");
@@ -74,6 +77,7 @@ export default async function TrashPage() {
                 <div className="mt-3">
                   <EntryMedia media={entry.media} trash compact />
                   <VoicePlayer media={entry.media} trash compact />
+                  <VideoPlayer media={entry.media} trash compact />
                 </div>
               ) : null}
               <div className="mt-4 flex flex-wrap items-end justify-between gap-4 border-t border-[var(--line)] pt-4">

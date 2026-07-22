@@ -245,6 +245,7 @@ export async function getProfileStatistics(): Promise<ProfileStatistics> {
     current_month_entries: Number(row.current_month_entries),
     image_entries: Number(row.image_entries),
     voice_entries: Number(row.voice_entries),
+    video_entries: Number(row.video_entries),
     edited_entries: Number(row.edited_entries),
   };
 }

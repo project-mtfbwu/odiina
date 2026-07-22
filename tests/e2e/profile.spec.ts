@@ -14,7 +14,7 @@ test("@profile-layout keeps private identity usable at certified widths", async 
     page.getByRole("heading", { name: "Odiina member", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Edit Profile" })).toBeVisible();
-  await expect(page.locator(".profile-stat-grid dd")).toHaveCount(5);
+  await expect(page.locator(".profile-stat-grid dd")).toHaveCount(7);
 
   const layout = await page.evaluate(() => {
     const banner = document.querySelector(".profile-banner");

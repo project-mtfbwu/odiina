@@ -3,7 +3,7 @@
 Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
-This repository contains the local scaffold and the first five MVP increments.
+This repository contains the local scaffold and the first six MVP increments.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -26,6 +26,11 @@ tagline or final brand assets have been selected.
 - One voice note per revision, mixed with optional text and up to five photos
 - Malware scanning, strict audio probing and canonical private AAC playback
 - Accessible waveform, seek, pause and single-active-player controls
+- Private video selection and explicit browser camera/microphone recording
+- Local video review, retake, discard and native device-picker fallback
+- One video per revision, mutually exclusive with a standalone voice note
+- Strict video probing, metadata removal, H.264/AAC playback and private posters
+- Owner-authorized, no-store video playback with HTTP byte ranges
 - Calendar recall using explicit occurrence dates
 - Private Profile identity with display name, canonical unique handle and bio
 - Private avatar/banner processing and owner-authorized delivery
@@ -33,24 +38,25 @@ tagline or final brand assets have been selected.
 - Honest loading, empty, error and offline states
 - Repository migration, seed data, pgTAP, unit and browser-test scaffolds
 
-AI, OpenAI calls, video, sharing, reports, search, tags, projects,
-charts, transcription and private-content service-worker caching are
+AI, OpenAI calls, sharing, reports, search, tags, projects, charts,
+transcription, captions and private-content service-worker caching are
 deliberately absent. Their feature flags are false.
 
 ## Media boundary
 
 Attachments use a media-general domain model. Implemented pipelines accept
-JPEG, PNG and WebP `image` media and WebM/Opus, Ogg/Opus or M4A/AAC `audio`
-media. `video` remains reserved and cannot be submitted through routes or
-RPCs. Common attachment records do not require image dimensions;
-those facts live in image metadata.
+JPEG, PNG and WebP `image` media; WebM/Opus, Ogg/Opus and M4A/AAC `audio`; and
+WebM VP8/VP9, MP4 H.264 or MOV H.264/HEVC `video`, with optional approved audio.
+Common attachment records do not require image or video dimensions; typed
+metadata tables own media-specific facts.
 
-Video scope includes existing-file upload and accessible mobile capture,
-preview/retake/discard, optional text, resumable progress and cancellation,
-validated processing states, private authorized playback, transcription and
-time-coded evidence. Uploaded bytes must remain quarantined until signature
-validation, probing, malware scanning and safe transcoding succeed. Playback
-must use a validated rendition, not the original upload.
+Video accepts at most 250 MiB and five minutes. Uploaded bytes remain private
+and quarantined until malware scanning, signature/declaration agreement,
+bounded FFprobe inspection, codec validation, rotation normalization,
+metadata removal, H.264/AAC transcoding and poster generation succeed. The
+browser receives only the accepted rendition through an authenticated
+same-origin streaming route; originals are never used for inline playback.
+Transcription, captions, extracted audio and AI interpretation remain deferred.
 
 See [Slice 2 implementation](docs/implementation/vertical-slice-2.md) and
 [deferred media architecture](docs/architecture/deferred-media-attachments.md).
@@ -69,13 +75,13 @@ Creation is idempotent by `(user_id, client_request_id, canonical payload)`.
 The Feed uses occurrence time plus Entry UUID as a deterministic cursor; its
 page size is 24.
 
-Image bytes upload directly to a private quarantine bucket using a one-time
+Media bytes upload directly to a private quarantine bucket using a one-time
 signed TUS authorization. Browser code receives neither a Supabase session
 token nor a service-role credential. A narrow non-human worker claims jobs
 through Postgres queues, leases only the object for its active job, scans it,
-validates its real signature and decoder limits, and writes immutable original,
-display and AI-sample variants. Odiina renders only the verified display
-derivative through an owner-authorized same-origin route.
+validates its real signature and decoder limits, and writes purpose-specific
+immutable variants. Odiina renders only verified display, audio-playback or
+video-playback/poster derivatives through owner-authorized same-origin routes.
 
 See [vertical-slice-1.md](docs/implementation/vertical-slice-1.md),
 [vertical-slice-2.md](docs/implementation/vertical-slice-2.md),
@@ -88,6 +94,8 @@ Increment D's picker, camera, retry and image-revision policies are documented
 in [increment-d-photo-capture.md](docs/implementation/increment-d-photo-capture.md).
 Increment E's voice consent, processing, playback and revision policies are
 documented in [increment-e-voice-capture.md](docs/implementation/increment-e-voice-capture.md).
+Increment F's video limits, consent, processing, playback and browser gates are
+documented in [increment-f-video-capture.md](docs/implementation/increment-f-video-capture.md).
 
 ## Local prerequisites
 
@@ -177,6 +185,7 @@ corepack pnpm test
 corepack pnpm test:db
 corepack pnpm test:scanner
 corepack pnpm test:audio
+corepack pnpm test:video
 corepack pnpm test:e2e
 corepack pnpm test:a11y
 corepack pnpm build

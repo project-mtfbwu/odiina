@@ -16,9 +16,14 @@ const safeErrorMap: Record<string, string> = {
     "Choose a JPEG, PNG, or WebP image up to 15 MiB.",
   odiina_audio_upload_invalid:
     "Choose WebM/Opus, Ogg/Opus, or M4A/AAC audio up to 25 MiB.",
+  odiina_video_upload_invalid:
+    "Choose a WebM, MP4, M4V or MOV video up to 250 MiB.",
   odiina_voice_limit: "Each Entry revision can contain one voice note.",
+  odiina_video_limit: "Each Entry revision can contain one video.",
+  odiina_voice_video_conflict:
+    "A standalone voice note and video cannot share one revision.",
   odiina_entry_media_limit:
-    "An Entry can contain up to five photos and one voice note.",
+    "An Entry can contain up to five photos and either one voice note or one video.",
 };
 
 export function safeErrorMessage(code: string | undefined): string {

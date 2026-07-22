@@ -6,7 +6,7 @@ import { Button } from "react-aria-components";
 import type { EntryMedia } from "@/lib/database/types";
 import { formatVoiceDuration } from "@/lib/media/recorder";
 
-const playbackEvent = "odiina:voice-play";
+const playbackEvent = "odiina:media-play";
 
 export function VoicePlayer({
   media,

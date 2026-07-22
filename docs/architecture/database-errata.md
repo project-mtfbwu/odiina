@@ -31,8 +31,9 @@ compatibility.
 
 Attachments are modeled through a general media abstraction with media kinds
 `image`, `video` and `audio`. The image pipeline accepts JPEG, PNG and WebP.
-Increment E adds a narrow audio pipeline for WebM/Opus, Ogg/Opus and M4A/AAC;
-video remains an architectural reservation rejected by routes and mutations.
+Increment E adds a narrow audio pipeline for WebM/Opus, Ogg/Opus and M4A/AAC.
+Increment F adds a separate, purpose-limited video pipeline; it does not widen
+the audio route or treat generic attachments as safe video.
 
 Common attachment records do not require image dimensions. Image dimensions
 and EXIF-derived facts belong in image metadata or media-variant structures.
@@ -56,7 +57,7 @@ to a registered worker, and verified display objects through Odiina’s
 owner-authorized delivery route.
 
 See [deferred-media-attachments.md](deferred-media-attachments.md) for the
-remaining video extension boundary.
+implemented video boundary and the remaining transcription/AI restrictions.
 
 ## Increment E voice-note extension
 
@@ -75,6 +76,35 @@ AAC-LC M4A playback rendition with unnecessary metadata removed. Acceptance
 commits the immutable original, playback object, metadata and queue state in
 one lease-fenced function. Playback is delivered only through an owner-scoped,
 no-store same-origin route with byte-range support.
+
+## Increment F video extension
+
+Increment F adds a private `poster` variant and bucket and forced-RLS
+`video_metadata`. The table records the accepted source container/codecs,
+duration, dimensions, frame rate, normalized rotation, audio presence, and the
+canonical playback/poster facts. These fields are deliberately absent from the
+common attachment table.
+
+Authorization derives ownership from the verified request claim and accepts a
+single entry-purpose video attempt within 250 MiB. Entry revision membership
+permits up to five images plus either one audio attachment or one video
+attachment. The immutable membership trigger and composite ownership keys are
+unchanged. Replacing or removing video creates a new revision and retains every
+accepted historical version.
+
+The lease-fenced worker scans quarantine bytes before bounded probing. It
+accepts WebM VP8/VP9 with optional Opus, MP4 H.264 with optional AAC, and MOV
+H.264/HEVC with optional AAC; rejects extra streams, unsupported pixel formats,
+HDR transfer functions, more than 3840Ã—2160 pixels, more than 60 fps, and
+durations outside 250 msâ€“5 minutes; then creates an orientation-normalized,
+non-upscaled H.264 `yuv420p` MP4 at no more than 1920Ã—1080/30 fps plus a JPEG
+poster. Atomic acceptance requires all immutable objects and validated metadata.
+
+Owner playback and poster reads require an accepted Entry attachment on an
+active or trashed Entry. Playback is proxied as `private, no-store` and preserves
+authorized byte ranges. Original bytes remain private and immutable and are
+never exposed for inline playback. No transcript, extracted-audio, caption, AI
+sample or public-sharing object is created in Increment F.
 
 ## Private Profile media purpose
 
