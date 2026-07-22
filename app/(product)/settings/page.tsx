@@ -45,10 +45,11 @@ export default async function SettingsPage() {
           Private-beta data status
         </h2>
         <p className="leading-7 text-[var(--muted)]">
-          Private image capture and its safety worker are enabled. AI, voice,
-          video, location, sharing and period reports remain gated behind their
-          mandatory MVP stages. Odiina does not call OpenAI or use third-party
-          analytics in this increment.
+          Private image, voice, video and place capture are enabled. Place
+          search is unavailable because no production-approved provider is
+          configured. AI, sharing and period reports remain gated. Odiina does
+          not call OpenAI, a map provider or third-party analytics in this
+          increment.
         </p>
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
           {Object.entries(featureFlags).map(([name, enabled]) => (

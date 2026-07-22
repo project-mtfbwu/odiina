@@ -150,3 +150,16 @@ Media-draft activation now takes a client request UUID and records
 activation returns the original Entry and revision; reusing the UUID with a
 different body, occurrence or ordered attachment set fails. The former
 non-idempotent function signature is removed.
+
+# Increment G extension — private place snapshots
+
+Migration `202607250001_place_attachment.sql` adds the forced-RLS
+`app.entry_revision_places` relation. It deliberately uses the same exact
+composite ownership/revision key as media membership and does not weaken
+revision immutability. Image or media dimensions are not assumed.
+
+Ordinary Entry editing appends a place snapshot to a new revision. The sole
+privacy exception is `app.redact_entry_places(uuid)`, which clears location
+content across all owned revisions but preserves revision identity and records
+`redacted_at`. This exceptional behavior is narrowly authorized and surfaced
+through a destructive confirmation, not the normal editor.

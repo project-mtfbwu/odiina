@@ -16,14 +16,21 @@ export async function createEntry(
   supabase: SupabaseClient,
   input: CreateEntryInput,
 ): Promise<MutationResult> {
-  const { data, error } = await supabase.schema("app").rpc("create_entry", {
+  const parameters = {
     p_body_text: input.bodyText,
     p_client_request_id: input.clientRequestId,
     p_occurred_at: input.occurredAt,
     p_occurred_local_date: input.occurredLocalDate,
     p_occurred_timezone: input.occurredTimezone,
     p_occurred_utc_offset_minutes: input.occurredUtcOffsetMinutes,
-  });
+  };
+  const { data, error } =
+    input.place === undefined
+      ? await supabase.schema("app").rpc("create_entry", parameters)
+      : await supabase.schema("app").rpc("create_entry_place", {
+          ...parameters,
+          p_place: input.place,
+        });
 
   if (error) {
     throw error;
@@ -51,12 +58,18 @@ export async function reviseEntry(
     p_occurred_utc_offset_minutes: input.occurredUtcOffsetMinutes,
   };
   const { data, error } =
-    input.attachmentIds === undefined
-      ? await supabase.schema("app").rpc("revise_entry", parameters)
-      : await supabase.schema("app").rpc("revise_entry_media", {
+    input.place !== undefined
+      ? await supabase.schema("app").rpc("revise_entry_place", {
           ...parameters,
-          p_attachment_ids: input.attachmentIds,
-        });
+          p_attachment_ids: input.attachmentIds ?? [],
+          p_place: input.place,
+        })
+      : input.attachmentIds === undefined
+        ? await supabase.schema("app").rpc("revise_entry", parameters)
+        : await supabase.schema("app").rpc("revise_entry_media", {
+            ...parameters,
+            p_attachment_ids: input.attachmentIds,
+          });
 
   if (error) {
     throw error;

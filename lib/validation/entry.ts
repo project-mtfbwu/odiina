@@ -4,6 +4,7 @@ import {
   isOccurrenceConsistent,
   isValidIanaTimezone,
 } from "@/lib/validation/timezone";
+import { placeSnapshotSchema } from "@/lib/validation/place";
 
 const occurrenceFields = {
   occurredAt: z.iso.datetime({ offset: true }),
@@ -20,7 +21,11 @@ export const createEntrySchema = z
   .object({
     ...occurrenceFields,
     clientRequestId: z.uuid(),
-    bodyText: z.string().trim().min(1).max(100_000),
+    bodyText: z.string().trim().max(100_000),
+    place: placeSnapshotSchema.optional(),
+  })
+  .refine(({ bodyText, place }) => bodyText.length > 0 || Boolean(place), {
+    message: "Add text or a place.",
   })
   .refine(isOccurrenceConsistent, {
     message: "Choose a valid occurrence date and time.",
@@ -36,6 +41,7 @@ export const reviseEntrySchema = z
       .max(6)
       .refine((ids) => new Set(ids).size === ids.length)
       .optional(),
+    place: placeSnapshotSchema.nullable().optional(),
     changeReason: z.enum(["edited", "occurrence_corrected"]),
   })
   .refine(isOccurrenceConsistent, {

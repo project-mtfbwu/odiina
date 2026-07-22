@@ -33,6 +33,22 @@ export type EntryVideoMedia = {
 
 export type EntryMedia = EntryImageMedia | EntryAudioMedia | EntryVideoMedia;
 
+export type EntryPlace = {
+  place_name: string | null;
+  place_area: string | null;
+  place_address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  precision: "label_only" | "approximate" | "exact" | null;
+  approximate_radius_meters: number | null;
+  source: "manual" | "device" | "search" | "nearby" | null;
+  provider: string | null;
+  provider_place_id: string | null;
+  country_code: string | null;
+  created_at: string;
+  redacted_at: string | null;
+};
+
 export type FeedEntry = {
   entry_id: string;
   current_revision_id: string;
@@ -44,6 +60,7 @@ export type FeedEntry = {
   created_at: string;
   updated_at: string;
   media: EntryMedia[];
+  place: EntryPlace | null;
 };
 
 export type EntryRevision = {
@@ -57,6 +74,7 @@ export type EntryRevision = {
   change_reason: string;
   created_at: string;
   media: EntryMedia[];
+  place: EntryPlace | null;
 };
 
 export type EntryDetail = {
@@ -98,5 +116,6 @@ export type ProfileStatistics = {
   image_entries: number;
   voice_entries: number;
   video_entries: number;
+  place_entries: number;
   edited_entries: number;
 };

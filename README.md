@@ -3,7 +3,7 @@
 Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
-This repository contains the local scaffold and the first six MVP increments.
+This repository contains the local scaffold and the first seven MVP increments.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -31,6 +31,9 @@ tagline or final brand assets have been selected.
 - One video per revision, mutually exclusive with a standalone voice note
 - Strict video probing, metadata removal, H.264/AAC playback and private posters
 - Owner-authorized, no-store video playback with HTTP byte ranges
+- Optional private place labels on Entries, including place-only Entries
+- Explicit one-time device location with label-only, approximate or exact privacy
+- Immutable per-revision place snapshots and explicit all-history redaction
 - Calendar recall using explicit occurrence dates
 - Private Profile identity with display name, canonical unique handle and bio
 - Private avatar/banner processing and owner-authorized delivery
@@ -38,7 +41,8 @@ tagline or final brand assets have been selected.
 - Honest loading, empty, error and offline states
 - Repository migration, seed data, pgTAP, unit and browser-test scaffolds
 
-AI, OpenAI calls, sharing, reports, search, tags, projects, charts,
+AI, OpenAI calls, sharing, reports, provider place search, nearby discovery,
+maps, tags, projects, charts,
 transcription, captions and private-content service-worker caching are
 deliberately absent. Their feature flags are false.
 
@@ -96,6 +100,8 @@ Increment E's voice consent, processing, playback and revision policies are
 documented in [increment-e-voice-capture.md](docs/implementation/increment-e-voice-capture.md).
 Increment F's video limits, consent, processing, playback and browser gates are
 documented in [increment-f-video-capture.md](docs/implementation/increment-f-video-capture.md).
+Increment G's place privacy, coordinate-reduction and redaction policies are
+documented in [increment-g-place-attachment.md](docs/implementation/increment-g-place-attachment.md).
 
 ## Local prerequisites
 

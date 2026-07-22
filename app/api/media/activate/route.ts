@@ -18,18 +18,24 @@ export async function POST(request: NextRequest) {
   try {
     assertCsrf(request, request.headers.get("x-odiina-csrf") ?? "");
     const input = activateMediaEntrySchema.parse(await request.json());
-    const { data, error } = await context.supabase
-      .schema("app")
-      .rpc("activate_media_entry", {
-        p_client_request_id: input.clientRequestId,
-        p_entry_id: input.entryId,
-        p_body_text: input.bodyText,
-        p_attachment_ids: input.attachmentIds,
-        p_occurred_at: input.occurredAt,
-        p_occurred_timezone: input.occurredTimezone,
-        p_occurred_local_date: input.occurredLocalDate,
-        p_occurred_utc_offset_minutes: input.occurredUtcOffsetMinutes,
-      });
+    const parameters = {
+      p_client_request_id: input.clientRequestId,
+      p_entry_id: input.entryId,
+      p_body_text: input.bodyText,
+      p_attachment_ids: input.attachmentIds,
+      p_occurred_at: input.occurredAt,
+      p_occurred_timezone: input.occurredTimezone,
+      p_occurred_local_date: input.occurredLocalDate,
+      p_occurred_utc_offset_minutes: input.occurredUtcOffsetMinutes,
+    };
+    const { data, error } = input.place
+      ? await context.supabase.schema("app").rpc("activate_media_entry_place", {
+          ...parameters,
+          p_place: input.place,
+        })
+      : await context.supabase
+          .schema("app")
+          .rpc("activate_media_entry", parameters);
     if (error) throw error;
     return context.applyAuthState(
       NextResponse.json((data as unknown[] | null)?.[0], { status: 201 }),

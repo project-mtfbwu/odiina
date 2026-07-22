@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { RestoreEntryButton } from "@/components/restore-entry-button";
 import { EntryMedia } from "@/components/entry-media";
+import { PlaceCard } from "@/components/place-card";
 import { StatusCard } from "@/components/status-card";
 import { VoicePlayer } from "@/components/voice-player";
 import { VideoPlayer } from "@/components/video-player";
@@ -71,8 +72,13 @@ export default async function TrashPage() {
           {feed.entries.map((entry) => (
             <article className="panel p-4 sm:p-5" key={entry.entry_id}>
               <p className="m-0 line-clamp-4 leading-7 whitespace-pre-wrap">
-                {entry.body_text || mediaSummary(entry.media)}
+                {entry.body_text ||
+                  mediaSummary(entry.media) ||
+                  (entry.place
+                    ? `At ${entry.place.place_name}`
+                    : "Private Entry")}
               </p>
+              {entry.place ? <PlaceCard place={entry.place} compact /> : null}
               {entry.media.length > 0 ? (
                 <div className="mt-3">
                   <EntryMedia media={entry.media} trash compact />

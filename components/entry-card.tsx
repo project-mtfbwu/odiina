@@ -5,9 +5,11 @@ import { EntryMedia } from "@/components/entry-media";
 import {
   ImageIcon,
   LockIcon,
+  LocationIcon,
   MicrophoneIcon,
   VideoIcon,
 } from "@/components/icons";
+import { PlaceCard } from "@/components/place-card";
 import { TrashEntryButton } from "@/components/trash-entry-button";
 import { VoicePlayer } from "@/components/voice-player";
 import { VideoPlayer } from "@/components/video-player";
@@ -73,7 +75,14 @@ export function EntryCard({
               <VideoIcon className="size-4" /> Video
             </span>
           ) : null}
-          {!imageCount && !hasVoice && !hasVideo ? <span>Text</span> : null}
+          {entry.place ? (
+            <span>
+              <LocationIcon className="size-4" /> Place
+            </span>
+          ) : null}
+          {!imageCount && !hasVoice && !hasVideo && !entry.place ? (
+            <span>Text</span>
+          ) : null}
           {entry.revision_number > 1 ? <span>Edited</span> : null}
           {new Date(entry.created_at).getTime() >
           new Date(entry.occurred_at).getTime() + 60_000 ? (
@@ -105,9 +114,14 @@ export function EntryCard({
                 ? `Voice note with ${imageCount} ${imageCount === 1 ? "photo" : "photos"}`
                 : hasVoice
                   ? "Private voice note"
-                  : `${imageCount} ${imageCount === 1 ? "photo" : "photos"}`}
+                  : imageCount
+                    ? `${imageCount} ${imageCount === 1 ? "photo" : "photos"}`
+                    : entry.place
+                      ? `At ${entry.place.place_name}`
+                      : "Private Entry"}
         </span>
       </Link>
+      {entry.place ? <PlaceCard place={entry.place} compact /> : null}
       {entry.media.length > 0 ? (
         <div className="entry-media">
           <EntryMedia media={entry.media} compact />

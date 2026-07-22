@@ -8,6 +8,7 @@ import type {
   CalendarActivity,
   EntryDetail,
   EntryMedia,
+  EntryPlace,
   FeedEntry,
   PrivateProfile,
   ProfileStatistics,
@@ -23,6 +24,21 @@ export type FeedPage = {
 };
 
 export type CalendarDayPage = FeedPage;
+
+type RevisionPlaceRow = EntryPlace & { revision_id: string };
+
+function normalizePlace(row: RevisionPlaceRow | undefined): EntryPlace | null {
+  if (!row) return null;
+  return {
+    ...row,
+    latitude: row.latitude === null ? null : Number(row.latitude),
+    longitude: row.longitude === null ? null : Number(row.longitude),
+    approximate_radius_meters:
+      row.approximate_radius_meters === null
+        ? null
+        : Number(row.approximate_radius_meters),
+  };
+}
 
 export async function getCalendarMonthActivity(
   selectedDate: string,
@@ -60,7 +76,7 @@ export async function getCalendarDayPage(
     });
   if (error) throw new Error("calendar_day_read_failed", { cause: error });
 
-  const rawEntries = (data ?? []) as Omit<FeedEntry, "media">[];
+  const rawEntries = (data ?? []) as Omit<FeedEntry, "media" | "place">[];
   const revisionIds = rawEntries.map((entry) => entry.current_revision_id);
   const { data: mediaRows, error: mediaError } = revisionIds.length
     ? await supabase
@@ -70,11 +86,25 @@ export async function getCalendarDayPage(
   if (mediaError)
     throw new Error("calendar_media_read_failed", { cause: mediaError });
   const media = (mediaRows ?? []) as (EntryMedia & { revision_id: string })[];
+  const { data: placeRows, error: placeError } = revisionIds.length
+    ? await supabase
+        .schema("app")
+        .rpc("revision_places", { p_revision_ids: revisionIds })
+    : { data: [], error: null };
+  if (placeError)
+    throw new Error("calendar_place_read_failed", { cause: placeError });
+  const places = (placeRows ?? []) as RevisionPlaceRow[];
   const entries = rawEntries.map((entry) => ({
     ...entry,
     media: media
       .filter((item) => item.revision_id === entry.current_revision_id)
       .sort((a, b) => a.media_position - b.media_position),
+    place: normalizePlace(
+      places.find(
+        (item) =>
+          item.revision_id === entry.current_revision_id && !item.redacted_at,
+      ),
+    ),
   }));
   const lastEntry = entries.at(-1);
   return {
@@ -106,7 +136,7 @@ export async function getFeedPage(
     throw new Error("feed_read_failed", { cause: error });
   }
 
-  const rawEntries = (data ?? []) as Omit<FeedEntry, "media">[];
+  const rawEntries = (data ?? []) as Omit<FeedEntry, "media" | "place">[];
   const revisionIds = rawEntries.map((entry) => entry.current_revision_id);
   const { data: mediaRows, error: mediaError } = revisionIds.length
     ? await supabase
@@ -119,11 +149,26 @@ export async function getFeedPage(
   const media = (mediaRows ?? []) as (EntryMedia & {
     revision_id: string;
   })[];
+  const { data: placeRows, error: placeError } = revisionIds.length
+    ? await supabase
+        .schema("app")
+        .rpc("revision_places", { p_revision_ids: revisionIds })
+    : { data: [], error: null };
+  if (placeError) {
+    throw new Error("feed_place_read_failed", { cause: placeError });
+  }
+  const places = (placeRows ?? []) as RevisionPlaceRow[];
   const entries: FeedEntry[] = rawEntries.map((entry) => ({
     ...entry,
     media: media
       .filter((item) => item.revision_id === entry.current_revision_id)
       .sort((a, b) => a.media_position - b.media_position),
+    place: normalizePlace(
+      places.find(
+        (item) =>
+          item.revision_id === entry.current_revision_id && !item.redacted_at,
+      ),
+    ),
   }));
   const lastEntry = entries.at(-1);
   const nextCursor =
@@ -192,6 +237,15 @@ export async function getEntryDetail(entryId: string): Promise<EntryDetail> {
   const media = (mediaRows ?? []) as (EntryMedia & {
     revision_id: string;
   })[];
+  const { data: placeRows, error: placeError } = revisionIds.length
+    ? await supabase
+        .schema("app")
+        .rpc("revision_places", { p_revision_ids: revisionIds })
+    : { data: [], error: null };
+  if (placeError) {
+    throw new Error("entry_place_history_failed", { cause: placeError });
+  }
+  const places = (placeRows ?? []) as RevisionPlaceRow[];
 
   return {
     ...(entry as Omit<EntryDetail, "revisions">),
@@ -200,6 +254,9 @@ export async function getEntryDetail(entryId: string): Promise<EntryDetail> {
       media: media
         .filter((item) => item.revision_id === revision.id)
         .sort((a, b) => a.media_position - b.media_position),
+      place: normalizePlace(
+        places.find((item) => item.revision_id === revision.id),
+      ),
     })),
   };
 }
@@ -246,6 +303,7 @@ export async function getProfileStatistics(): Promise<ProfileStatistics> {
     image_entries: Number(row.image_entries),
     voice_entries: Number(row.voice_entries),
     video_entries: Number(row.video_entries),
+    place_entries: Number(row.place_entries),
     edited_entries: Number(row.edited_entries),
   };
 }

@@ -6,6 +6,8 @@ import { Button, Label, TextArea, TextField } from "react-aria-components";
 import type { Upload } from "tus-js-client";
 
 import { CameraCapture } from "@/components/camera-capture";
+import { LocationIcon } from "@/components/icons";
+import { PlacePicker } from "@/components/place-picker";
 import { VideoCapture } from "@/components/video-capture";
 import { VideoPlayer } from "@/components/video-player";
 import { VoiceCapture } from "@/components/voice-capture";
@@ -14,6 +16,7 @@ import type {
   EntryAudioMedia,
   EntryImageMedia,
   EntryMedia,
+  EntryPlace,
   EntryVideoMedia,
 } from "@/lib/database/types";
 import {
@@ -44,6 +47,7 @@ import {
   maximumVideoDurationMs,
   minimumVideoDurationMs,
 } from "@/lib/validation/media";
+import type { PlaceSnapshotInput } from "@/lib/validation/place";
 import {
   localCivilDate,
   localTime,
@@ -82,6 +86,26 @@ function initialEditorVideo(media: EntryMedia[]): EditorVideoItem | null {
   return video ? { kind: "existing", media: video } : null;
 }
 
+function editablePlace(place: EntryPlace | null): PlaceSnapshotInput | null {
+  if (!place || place.redacted_at || !place.place_name || !place.precision) {
+    return null;
+  }
+  return {
+    placeName: place.place_name,
+    placeArea: place.place_area,
+    placeAddress: place.place_address,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    precision: place.precision,
+    approximateRadiusMeters: place.approximate_radius_meters,
+    source: place.source === "device" ? "device" : "manual",
+    provider: null,
+    providerPlaceId: null,
+    countryCode: place.country_code,
+    exactConfirmed: place.precision === "exact",
+  };
+}
+
 export function EntryEditor({
   entryId,
   currentRevisionId,
@@ -93,6 +117,7 @@ export function EntryEditor({
   timezone,
   csrfToken,
   currentMedia,
+  currentPlace,
 }: {
   entryId: string;
   currentRevisionId: string;
@@ -104,6 +129,7 @@ export function EntryEditor({
   timezone: string;
   csrfToken: string;
   currentMedia: EntryMedia[];
+  currentPlace: EntryPlace | null;
 }) {
   const router = useRouter();
   const chooseInput = useRef<HTMLInputElement>(null);
@@ -124,6 +150,8 @@ export function EntryEditor({
   const [video, setVideo] = useState<EditorVideoItem | null>(() =>
     initialEditorVideo(currentMedia),
   );
+  const initialPlace = editablePlace(currentPlace);
+  const [place, setPlace] = useState<PlaceSnapshotInput | null>(initialPlace);
   const initialOccurrenceDate = localCivilDate(
     new Date(initialOccurredAt),
     timezone,
@@ -138,6 +166,7 @@ export function EntryEditor({
   const [cameraOpen, setCameraOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
+  const [placeOpen, setPlaceOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const remaining = 100_000 - Array.from(body).length;
@@ -172,7 +201,8 @@ export function EntryEditor({
     mediaIdentity !==
       initialImages.map((item) => item.attachment_id).join(",") ||
     voiceIdentity !== (initialVoice?.attachment_id ?? "") ||
-    videoIdentity !== (initialVideo?.attachment_id ?? "");
+    videoIdentity !== (initialVideo?.attachment_id ?? "") ||
+    JSON.stringify(place) !== JSON.stringify(initialPlace);
 
   useEffect(() => {
     const uploads = activeUploads.current;
@@ -517,7 +547,7 @@ export function EntryEditor({
   async function save() {
     if (
       !changed ||
-      (!body.trim() && media.length === 0 && !voice && !video) ||
+      (!body.trim() && media.length === 0 && !voice && !video && !place) ||
       remaining < 0 ||
       busy
     ) {
@@ -621,6 +651,7 @@ export function EntryEditor({
           ...occurrence,
           changeReason: occurrenceChanged ? "occurrence_corrected" : "edited",
           attachmentIds,
+          place,
         }),
       });
       const result = (await response.json()) as { message?: string };
@@ -650,8 +681,8 @@ export function EntryEditor({
         Edit Entry
       </h2>
       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-        Odiina preserves the current version. Text, time, photos, voice-note and
-        video changes create a new immutable revision.
+        Odiina preserves the current version. Text, time, media and place
+        changes create a new immutable revision.
       </p>
       {error ? (
         <div className="form-error my-4" role="alert">
@@ -689,6 +720,75 @@ export function EntryEditor({
           evidence and may move this Entry to another Calendar day.
         </p>
       </fieldset>
+
+      <section
+        className="edit-place-section"
+        aria-labelledby="edit-place-heading"
+      >
+        <div className="image-preview-summary">
+          <div>
+            <h3 id="edit-place-heading" className="m-0 text-sm font-bold">
+              Private place
+            </h3>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              Changing or removing it affects this new revision. Earlier
+              revisions remain unchanged.
+            </p>
+          </div>
+          <Button
+            className="button button-secondary"
+            onPress={() => setPlaceOpen(true)}
+            isDisabled={busy}
+          >
+            <LocationIcon className="size-5" />{" "}
+            {place ? "Change place" : "Add place"}
+          </Button>
+        </div>
+        {place ? (
+          <div className="place-draft mt-3" role="status">
+            <LocationIcon className="size-5" />
+            <div>
+              <strong>{place.placeName}</strong>
+              {place.placeArea ? <span>{place.placeArea}</span> : null}
+              <small>
+                {place.precision === "label_only"
+                  ? "Label only · no coordinates"
+                  : place.precision === "approximate"
+                    ? "Approximate · about 3 km"
+                    : "Exact · private"}
+              </small>
+            </div>
+            <Button
+              className="button button-secondary"
+              onPress={() => {
+                setPlace(null);
+                setAnnouncement("Place removed from this unsaved revision.");
+              }}
+              isDisabled={busy}
+            >
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <p className="empty-inline">No place in this revision.</p>
+        )}
+        <PlacePicker
+          isOpen={placeOpen}
+          onOpenChange={setPlaceOpen}
+          selected={place}
+          onSelect={(selectedPlace) => {
+            setPlace(selectedPlace);
+            setError(null);
+            setAnnouncement(
+              `${selectedPlace.placeName} selected for this revision.`,
+            );
+          }}
+          onRemove={() => {
+            setPlace(null);
+            setAnnouncement("Place removed from this unsaved revision.");
+          }}
+        />
+      </section>
 
       <section className="mt-5" aria-labelledby="edit-media-heading">
         <div className="image-preview-summary">
@@ -1082,7 +1182,11 @@ export function EntryEditor({
             onPress={() => void save()}
             isDisabled={
               !changed ||
-              (!body.trim() && media.length === 0 && !voice && !video) ||
+              (!body.trim() &&
+                media.length === 0 &&
+                !voice &&
+                !video &&
+                !place) ||
               remaining < 0 ||
               busy
             }

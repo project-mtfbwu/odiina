@@ -24,6 +24,8 @@ const safeErrorMap: Record<string, string> = {
     "A standalone voice note and video cannot share one revision.",
   odiina_entry_media_limit:
     "An Entry can contain up to five photos and either one voice note or one video.",
+  odiina_place_invalid:
+    "Review the place name, privacy level and selected coordinates.",
 };
 
 export function safeErrorMessage(code: string | undefined): string {

@@ -14,6 +14,7 @@ import {
 import type { Upload } from "tus-js-client";
 
 import { CameraCapture } from "@/components/camera-capture";
+import { PlacePicker } from "@/components/place-picker";
 import { VideoCapture } from "@/components/video-capture";
 import { VoiceCapture } from "@/components/voice-capture";
 import {
@@ -55,6 +56,7 @@ import {
   minimumVideoDurationMs,
   minimumAudioDurationMs,
 } from "@/lib/validation/media";
+import type { PlaceSnapshotInput } from "@/lib/validation/place";
 import {
   localCivilDate,
   localTime,
@@ -97,9 +99,11 @@ export function EntryComposer({
   const [images, setImages] = useState<ImageDraft[]>([]);
   const [audio, setAudio] = useState<AudioDraft | null>(null);
   const [video, setVideo] = useState<VideoDraft | null>(null);
+  const [place, setPlace] = useState<PlaceSnapshotInput | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
+  const [placeOpen, setPlaceOpen] = useState(false);
   const [clientRequestId, setClientRequestId] = useState(() =>
     crypto.randomUUID(),
   );
@@ -113,7 +117,8 @@ export function EntryComposer({
     (body.trim().length > 0 ||
       images.length > 0 ||
       audio !== null ||
-      video !== null) &&
+      video !== null ||
+      place !== null) &&
     remaining >= 0;
   const hasFailedUploads =
     images.some((image) => image.stage === "Failed") ||
@@ -536,6 +541,7 @@ export function EntryComposer({
         await jsonRequest("/api/entries", {
           clientRequestId,
           bodyText: body,
+          ...(place ? { place } : {}),
           ...occurrence,
         });
       } else {
@@ -617,6 +623,7 @@ export function EntryComposer({
           entryId: activeDraftId,
           bodyText: body,
           attachmentIds,
+          ...(place ? { place } : {}),
           ...occurrence,
         });
       }
@@ -635,6 +642,7 @@ export function EntryComposer({
         previewUrls.current.delete(video.previewUrl);
       }
       setVideo(null);
+      setPlace(null);
       draftEntryId.current = null;
       setBody("");
       setClientRequestId(crypto.randomUUID());
@@ -754,6 +762,43 @@ export function EntryComposer({
         </p>
       ) : null}
 
+      {place ? (
+        <div
+          className="place-draft"
+          role="status"
+          aria-label="Selected private place"
+        >
+          <LocationIcon className="size-5" />
+          <div>
+            <strong>{place.placeName}</strong>
+            {place.placeArea ? <span>{place.placeArea}</span> : null}
+            <small>
+              {place.precision === "label_only"
+                ? "Label only · no coordinates"
+                : place.precision === "approximate"
+                  ? "Approximate · about 3 km"
+                  : "Exact · private"}
+            </small>
+          </div>
+          <Button
+            className="button button-secondary"
+            onPress={() => setPlaceOpen(true)}
+          >
+            Change
+          </Button>
+          <Button
+            className="button button-secondary"
+            onPress={() => {
+              setPlace(null);
+              setClientRequestId(crypto.randomUUID());
+              setStageAnnouncement("Place removed from this unsaved Entry.");
+            }}
+          >
+            Remove
+          </Button>
+        </div>
+      ) : null}
+
       <div className="composer-tools">
         <MenuTrigger>
           <Button className="composer-icon-button" aria-label="Add media">
@@ -803,9 +848,8 @@ export function EntryComposer({
               >
                 <VideoIcon className="size-5" /> Choose video
               </MenuItem>
-              <MenuItem isDisabled>
-                <LocationIcon className="size-5" /> Add location
-                <span>Stage G</span>
+              <MenuItem onAction={() => setPlaceOpen(true)}>
+                <LocationIcon className="size-5" /> Add place
               </MenuItem>
             </Menu>
           </Popover>
@@ -907,6 +951,25 @@ export function EntryComposer({
           }
           onChooseVideo={() => videoInput.current?.click()}
           onNativeCapture={() => nativeVideoInput.current?.click()}
+        />
+        <PlacePicker
+          isOpen={placeOpen}
+          onOpenChange={setPlaceOpen}
+          selected={place}
+          onSelect={(selectedPlace) => {
+            setPlace(selectedPlace);
+            setClientRequestId(crypto.randomUUID());
+            setSaved(false);
+            setError(null);
+            setStageAnnouncement(
+              `${selectedPlace.placeName} added to this unsaved Entry.`,
+            );
+          }}
+          onRemove={() => {
+            setPlace(null);
+            setClientRequestId(crypto.randomUUID());
+            setStageAnnouncement("Place removed from this unsaved Entry.");
+          }}
         />
       </div>
       <p className="composer-help">

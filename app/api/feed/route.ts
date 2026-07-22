@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { verifiedRequestClient } from "@/lib/auth/request-user";
 import { feedPageSize } from "@/lib/database/queries";
 import { decodeFeedCursor, encodeFeedCursor } from "@/lib/database/cursor";
-import type { EntryMedia, FeedEntry } from "@/lib/database/types";
+import type { EntryMedia, EntryPlace, FeedEntry } from "@/lib/database/types";
 import { configurationUnavailableResponse } from "@/lib/security/http-responses";
 
 export async function GET(request: NextRequest) {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const rawEntries = (data ?? []) as Omit<FeedEntry, "media">[];
+  const rawEntries = (data ?? []) as Omit<FeedEntry, "media" | "place">[];
   const revisionIds = rawEntries.map((entry) => entry.current_revision_id);
   const { data: mediaData, error: mediaError } = revisionIds.length
     ? await context.supabase
@@ -47,11 +47,29 @@ export async function GET(request: NextRequest) {
   const media = (mediaData ?? []) as (EntryMedia & {
     revision_id: string;
   })[];
+  const { data: placeData, error: placeError } = revisionIds.length
+    ? await context.supabase
+        .schema("app")
+        .rpc("revision_places", { p_revision_ids: revisionIds })
+    : { data: [], error: null };
+  if (placeError) {
+    return context.applyAuthState(
+      NextResponse.json({ error: "feed_unavailable" }, { status: 503 }),
+    );
+  }
+  const places = (placeData ?? []) as (EntryPlace & {
+    revision_id: string;
+  })[];
   const entries: FeedEntry[] = rawEntries.map((entry) => ({
     ...entry,
     media: media
       .filter((item) => item.revision_id === entry.current_revision_id)
       .sort((a, b) => a.media_position - b.media_position),
+    place:
+      places.find(
+        (item) =>
+          item.revision_id === entry.current_revision_id && !item.redacted_at,
+      ) ?? null,
   }));
   const last = entries.at(-1);
   return context.applyAuthState(

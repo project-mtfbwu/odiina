@@ -30,6 +30,7 @@ ODIINA_FEATURE_UPLOADS=true
 ODIINA_FEATURE_IMAGE_UPLOADS=true
 ODIINA_FEATURE_VIDEO_UPLOADS=true
 ODIINA_FEATURE_AUDIO_UPLOADS=true
+ODIINA_FEATURE_PLACES=true
 ODIINA_FEATURE_WORKER=true
 ODIINA_FEATURE_SHARING=false
 ODIINA_FEATURE_PERIOD_REPORTS=false
@@ -46,5 +47,5 @@ if (
 
 await writeFile(".env.local", material, { encoding: "utf8", mode: 0o600 });
 console.log(
-  "Wrote browser-safe local settings to ignored .env.local; private image, voice and video capture are enabled.",
+  "Wrote browser-safe local settings to ignored .env.local; private media and place capture are enabled.",
 );

@@ -4,6 +4,8 @@ import Link from "next/link";
 
 import { EntryEditor } from "@/components/entry-editor";
 import { EntryMedia } from "@/components/entry-media";
+import { PlaceCard } from "@/components/place-card";
+import { PlaceRedactionButton } from "@/components/place-redaction-button";
 import { RestoreEntryButton } from "@/components/restore-entry-button";
 import { VoicePlayer } from "@/components/voice-player";
 import { VideoPlayer } from "@/components/video-player";
@@ -104,6 +106,7 @@ export default async function EntryPage({
           timezone={preferences.iana_timezone ?? current.occurred_timezone}
           csrfToken={csrf}
           currentMedia={current.media}
+          currentPlace={current.place}
         />
       ) : (
         <article className="panel p-5 sm:p-7">
@@ -111,6 +114,11 @@ export default async function EntryPage({
             <p className="entry-body whitespace-pre-wrap">
               {current.body_text}
             </p>
+          ) : null}
+          {current.place ? (
+            <div className={current.body_text ? "mt-5" : ""}>
+              <PlaceCard place={current.place} />
+            </div>
           ) : null}
           {current.media.length > 0 ? (
             <div className={current.body_text ? "mt-5" : ""}>
@@ -176,6 +184,11 @@ export default async function EntryPage({
               <p className="mt-3 mb-0 text-sm leading-6 whitespace-pre-wrap">
                 {revision.body_text}
               </p>
+              {revision.place ? (
+                <div className="mt-3">
+                  <PlaceCard place={revision.place} compact />
+                </div>
+              ) : null}
               <p className="revision-occurrence">
                 Happened{" "}
                 <time dateTime={revision.occurred_at}>
@@ -214,6 +227,18 @@ export default async function EntryPage({
             </li>
           ))}
         </ol>
+        {entry.revisions.some(
+          (revision) => revision.place && !revision.place.redacted_at,
+        ) ? (
+          <div className="place-redaction-zone">
+            <h3>Location privacy control</h3>
+            <p>
+              Normal edits preserve history. This separate action removes the
+              place data from every revision of this Entry and cannot be undone.
+            </p>
+            <PlaceRedactionButton entryId={entryId} csrfToken={csrf} />
+          </div>
+        ) : null}
       </section>
     </div>
   );
