@@ -467,6 +467,23 @@ test("@video-journey completes selected and recorded private video flow", async 
       )
       .toBe(true);
   }
+  const feedPlayer = card.locator(".video-player");
+  await feedPlayer.evaluate((element) => {
+    element.scrollIntoView({ block: "start" });
+    window.scrollBy(0, -96);
+  });
+  await expect
+    .poll(async () => {
+      const playerBox = await feedPlayer.boundingBox();
+      const composerBox = await page.locator(".composer-shell").boundingBox();
+      return Boolean(
+        playerBox &&
+        composerBox &&
+        playerBox.y >= 0 &&
+        playerBox.y + playerBox.height <= composerBox.y,
+      );
+    })
+    .toBe(true);
   await page.screenshot({
     path: testInfo.outputPath("video-feed-ready.png"),
   });
