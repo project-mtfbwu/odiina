@@ -89,9 +89,18 @@ search.
   7, failed 0, skipped 0 synthetic fixtures. The constrained worker was
   re-registered after reset and remained stable.
 - Production Playwright used Chromium 149.0.7827.55. Search setup, six widths,
-  and desktop/mobile journeys passed 9/9. Public login/reflow/axe passed 18/18;
-  Profile setup plus four widths passed 5/5; isolated first-login desktop and
-  mobile passed 1/1 each; isolated Calendar desktop and mobile passed 1/1 each.
+  and desktop/mobile journeys passed 9/9 (zero failures and zero skips). Each
+  journey creates real accepted image, voice, and video media plus a confirmed
+  place, proves individual and combined media filters, place text/condition,
+  occurrence-date filtering, 20+1 cursor pagination without duplicates, tag
+  revision history, Trash/include/restore, logout, and protected access. The
+  final matrix used the production `next start` server, one worker, desktop
+  1440Ã—1000, mobile Chromium emulation at 390Ã—844, and axe at 320, 390, 768,
+  960, 1200, and 1440 pixels. It also caught and fixed a real client-state bug
+  where the active cursor was omitted from the Search results component key.
+  Public login/reflow/axe passed 18/18; Profile setup plus four widths passed
+  5/5; isolated first-login desktop and mobile passed 1/1 each; isolated
+  Calendar desktop and mobile passed 1/1 each.
 - In the broad regression invocation, 73 tests passed before 14 suite-state
   failures exposed a missing public-project `@profile` exclusion, the former
   eight-stat expectation, and four invalid shared first-login preconditions.

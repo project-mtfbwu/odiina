@@ -228,7 +228,10 @@ export default async function SearchPage({
         </StatusCard>
       ) : (
         <SearchResults
-          key={searchParametersToQuery(parameters).toString()}
+          key={searchParametersToQuery(
+            parameters,
+            parameters.cursor,
+          ).toString()}
           initialEntries={page.entries}
           csrfToken={csrf}
           displayName={user.displayName}
