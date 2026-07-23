@@ -10,8 +10,15 @@ import { RestoreEntryButton } from "@/components/restore-entry-button";
 import { TagChips } from "@/components/tag-chips";
 import { VoicePlayer } from "@/components/voice-player";
 import { VideoPlayer } from "@/components/video-player";
+import { TranscriptPanel } from "@/components/transcript-panel";
+import { getAiRuntimeStatus } from "@/lib/ai/config";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
-import { getEntryDetail, getPreferences } from "@/lib/database/queries";
+import {
+  getAiSettings,
+  getEntryDetail,
+  getEntryTranscriptState,
+  getPreferences,
+} from "@/lib/database/queries";
 
 export const metadata: Metadata = { title: "Entry" };
 export const dynamic = "force-dynamic";
@@ -29,7 +36,10 @@ export default async function EntryPage({
     getPreferences(),
     cookies(),
   ]);
-  const entry = await getEntryDetail(entryId);
+  const [entry, aiSettings] = await Promise.all([
+    getEntryDetail(entryId),
+    getAiSettings(),
+  ]);
   const current = entry.revisions.find(
     (revision) => revision.id === entry.current_revision_id,
   );
@@ -160,6 +170,20 @@ export default async function EntryPage({
           ) : null}
         </article>
       )}
+
+      {!editing && entry.lifecycle_state === "active" ? (
+        <TranscriptPanel
+          entryId={entryId}
+          revisionId={current.id}
+          media={current.media}
+          state={await getEntryTranscriptState(entryId, current.id)}
+          enabled={
+            aiSettings.master_enabled && aiSettings.transcription_enabled
+          }
+          providerAvailable={getAiRuntimeStatus().providerAvailable}
+          csrfToken={csrf}
+        />
+      ) : null}
 
       <section
         className="panel mt-4 p-5 sm:p-7"

@@ -7,6 +7,7 @@ import type { EntryMedia } from "@/lib/database/types";
 import { formatVoiceDuration } from "@/lib/media/recorder";
 
 const playbackEvent = "odiina:media-play";
+const seekEvent = "odiina:media-seek";
 
 export function VoicePlayer({
   media,
@@ -29,9 +30,23 @@ export function VoicePlayer({
       const detail = (event as CustomEvent<string>).detail;
       if (detail !== voice?.attachment_id) audio?.pause();
     }
+    function seekToEvidence(event: Event) {
+      const detail = (
+        event as CustomEvent<{ attachmentId: string; seconds: number }>
+      ).detail;
+      if (detail.attachmentId !== voice?.attachment_id || !audio) return;
+      audio.currentTime = detail.seconds;
+      setPosition(detail.seconds);
+      window.dispatchEvent(
+        new CustomEvent(playbackEvent, { detail: voice.attachment_id }),
+      );
+      void audio.play().catch(() => setFailed(true));
+    }
     window.addEventListener(playbackEvent, pauseAnother);
+    window.addEventListener(seekEvent, seekToEvidence);
     return () => {
       window.removeEventListener(playbackEvent, pauseAnother);
+      window.removeEventListener(seekEvent, seekToEvidence);
       audio?.pause();
     };
   }, [voice?.attachment_id]);

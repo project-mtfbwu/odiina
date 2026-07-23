@@ -6,6 +6,7 @@ import type { EntryMedia } from "@/lib/database/types";
 import { formatVideoDuration } from "@/lib/media/video-recorder";
 
 const playbackEvent = "odiina:media-play";
+const seekEvent = "odiina:media-seek";
 
 export function VideoPlayer({
   media,
@@ -30,10 +31,23 @@ export function VideoPlayer({
     function pauseForPrivacy() {
       if (document.visibilityState === "hidden") element?.pause();
     }
+    function seekToEvidence(event: Event) {
+      const detail = (
+        event as CustomEvent<{ attachmentId: string; seconds: number }>
+      ).detail;
+      if (detail.attachmentId !== video?.attachment_id || !element) return;
+      element.currentTime = detail.seconds;
+      window.dispatchEvent(
+        new CustomEvent(playbackEvent, { detail: video.attachment_id }),
+      );
+      void element.play().catch(() => setFailed(true));
+    }
     window.addEventListener(playbackEvent, pauseAnother);
+    window.addEventListener(seekEvent, seekToEvidence);
     document.addEventListener("visibilitychange", pauseForPrivacy);
     return () => {
       window.removeEventListener(playbackEvent, pauseAnother);
+      window.removeEventListener(seekEvent, seekToEvidence);
       document.removeEventListener("visibilitychange", pauseForPrivacy);
       element?.pause();
     };

@@ -49,10 +49,12 @@ tagline or final brand assets have been selected.
 - Honest loading, empty, error and offline states
 - Repository migration, seed data, pgTAP, unit and browser-test scaffolds
 
-AI, OpenAI calls, semantic search, sharing, reports, provider place search,
-nearby discovery, maps, projects, charts,
-transcription, captions and private-content service-worker caching are
-deliberately absent. Their feature flags are false.
+Increment I adds consent-gated transcription and evidence-linked private
+insights behind a default-off master switch. The repository includes only a
+deterministic loopback test provider; no live AI provider is approved or
+configured, and no OpenAI key is required. Semantic search, sharing, reports,
+provider place search, nearby discovery, maps, projects, charts and
+private-content service-worker caching remain absent.
 
 ## Media boundary
 
@@ -68,7 +70,11 @@ bounded FFprobe inspection, codec validation, rotation normalization,
 metadata removal, H.264/AAC transcoding and poster generation succeed. The
 browser receives only the accepted rendition through an authenticated
 same-origin streaming route; originals are never used for inline playback.
-Transcription, captions, extracted audio and AI interpretation remain deferred.
+Transcription is request-only. The fake local provider never downloads media;
+a future reviewed live worker must extract only the accepted video's audio
+track locally and may send only that bounded audio derivative after consent.
+Automatic transcription, captions and continuous visual observation remain
+disabled.
 
 See [Slice 2 implementation](docs/implementation/vertical-slice-2.md) and
 [deferred media architecture](docs/architecture/deferred-media-attachments.md).
@@ -116,6 +122,10 @@ boundaries are documented in
 Increment H.1's inline-tag, nested-collection, count and navigation guarantees
 are documented in
 [increment-h1-bear-tag-collections.md](docs/implementation/increment-h1-bear-tag-collections.md).
+Increment I's consent, provider, worker, evidence and deletion boundaries are
+documented in
+[increment-i-private-ai-insights.md](docs/implementation/increment-i-private-ai-insights.md)
+and [private-ai.md](docs/architecture/private-ai.md).
 
 ## Local prerequisites
 
@@ -173,9 +183,26 @@ corepack pnpm dev
 
 ## Environment and privacy
 
-Only the documented Supabase, application, signed-TUS, worker/scanner and
-feature-flag variables are active. OpenAI is not configured. No secret may
+Only the documented Supabase, application, signed-TUS, worker/scanner, AI-worker
+and feature-flag variables are active. OpenAI is not configured. No secret may
 receive a `NEXT_PUBLIC_` prefix.
+
+For local Increment I testing, set `ODIINA_FEATURE_AI=true`,
+`ODIINA_AI_PROVIDER=fake` and `ODIINA_ALLOW_FAKE_AI=true`. The fake provider is
+refused unless Supabase is on loopback. Bootstrap a dedicated non-human worker
+with a temporary local service-role variable, then remove that variable:
+
+```powershell
+$env:ODIINA_AI_BOOTSTRAP_SERVICE_ROLE_KEY = "<local SERVICE_ROLE_KEY>"
+$env:ODIINA_AI_WORKER_EMAIL = "odiina-ai-worker@example.test"
+$env:ODIINA_AI_WORKER_PASSWORD = "<long random local password>"
+corepack pnpm ai:worker:bootstrap
+Remove-Item Env:ODIINA_AI_BOOTSTRAP_SERVICE_ROLE_KEY
+corepack pnpm ai:worker
+```
+
+The normal AI worker uses only the publishable key and restricted worker
+credentials. Do not place the bootstrap service-role key in `.env.local`.
 
 Media processing needs a separately bootstrapped worker identity. The bootstrap
 service-role key is accepted only from the current process, only against

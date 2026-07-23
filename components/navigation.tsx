@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarIcon,
   FeedIcon,
+  InsightsIcon,
   PlusIcon,
   ProfileIcon,
   SearchIcon,
@@ -21,6 +22,7 @@ const activeItems = [
   { href: "/feed", label: "Feed", icon: FeedIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/search", label: "Search", icon: SearchIcon },
+  { href: "/insights", label: "Insights", icon: InsightsIcon },
   { href: "/profile", label: "Profile", icon: ProfileIcon },
   { href: "/trash", label: "Trash", icon: TrashIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },

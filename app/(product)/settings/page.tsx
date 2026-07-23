@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Link from "next/link";
 
 import { PreferencesForm } from "@/components/preferences-form";
 import { csrfCookieName } from "@/lib/auth/cookie-options";
@@ -47,9 +48,8 @@ export default async function SettingsPage() {
         <p className="leading-7 text-[var(--muted)]">
           Private image, voice, video and place capture are enabled. Place
           search is unavailable because no production-approved provider is
-          configured. AI, sharing and period reports remain gated. Odiina does
-          not call OpenAI, a map provider or third-party analytics in this
-          increment.
+          configured. AI is separately consent-gated and has no approved live
+          provider. Sharing and period reports remain gated.
         </p>
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
           {Object.entries(featureFlags).map(([name, enabled]) => (
@@ -64,6 +64,19 @@ export default async function SettingsPage() {
             </div>
           ))}
         </dl>
+      </section>
+
+      <section className="panel mt-4 p-5 sm:p-7" aria-labelledby="ai-heading">
+        <h2 id="ai-heading" className="mt-0 text-xl font-bold">
+          Private AI
+        </h2>
+        <p className="leading-7 text-[var(--muted)]">
+          Review the master kill switch, separate transcription and insight
+          consent, transcript Search, usage limits and deletion controls.
+        </p>
+        <Link className="button button-secondary" href="/settings/ai">
+          Open private AI settings
+        </Link>
       </section>
 
       <section

@@ -3,6 +3,22 @@
 These corrections are authoritative for implementation and preserve the
 approved product intent.
 
+## Increment I extension — private AI derivatives
+
+Migration `202607270001_private_ai_insights.sql` adds default-off consent,
+durable private jobs, version-bound transcripts, append-only corrections,
+evidence-linked insights and non-content usage accounting. All new tables use
+FORCE RLS. Browser-callable mutation functions derive ownership from
+`auth.uid()`, accept no user ID, use a fixed empty search path, and are revoked
+from PUBLIC and anon.
+
+The migration extends the existing current-snapshot Search document with
+transcript fields rather than creating a parallel index. Originals are not AI
+artifacts: deleting derived data never deletes Entries or media. Transcript
+and insight tombstones remain only to preserve idempotency and audit state;
+content-bearing segments, corrections, excerpts and Search projections are
+removed. Hosted backup retention still requires a deployment-specific policy.
+
 ## Search projection uniqueness
 
 Do not use `UNIQUE NULLS NOT DISTINCT` on `(user_id, source_entry_id)` or

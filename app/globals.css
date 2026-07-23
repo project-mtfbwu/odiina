@@ -365,6 +365,17 @@ select {
   font-weight: 750;
 }
 
+.search-match-source {
+  width: fit-content;
+  margin: 0 0 0.65rem;
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .entry-body {
   display: block;
   margin: 0;
@@ -2867,6 +2878,152 @@ select {
   margin: 0;
   color: var(--muted);
   font-size: 0.75rem;
+}
+
+.ai-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  min-height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  padding: 0.9rem;
+  background: var(--surface-raised);
+}
+
+.ai-choice input {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 0.15rem;
+  accent-color: var(--accent);
+}
+
+.ai-choice span,
+.ai-choice small {
+  display: block;
+}
+
+.ai-choice small {
+  margin-top: 0.25rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.ai-choice-danger {
+  border-color: var(--danger);
+}
+
+.ai-usage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.ai-usage div {
+  border-radius: 0.75rem;
+  padding: 0.8rem;
+  background: var(--surface-raised);
+}
+
+.ai-usage dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.ai-usage dd {
+  margin: 0.3rem 0 0;
+  font-weight: 700;
+}
+
+.insight-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+}
+
+.insight-list-item span,
+.insight-list-item small {
+  display: block;
+}
+
+.insight-list-item small {
+  margin-top: 0.25rem;
+  color: var(--muted);
+}
+
+.transcript-panel {
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: var(--surface);
+}
+
+.transcript-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.transcript-heading-row h2 {
+  margin: 0.2rem 0 0;
+  font-size: 1.25rem;
+}
+
+.transcript-segments {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transcript-segments > li {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.9rem;
+}
+
+.transcript-segments p {
+  margin: 0 0 0.35rem;
+  line-height: 1.55;
+}
+
+.transcript-time,
+.text-link {
+  min-height: 2.75rem;
+  color: var(--accent-bright);
+  text-align: left;
+  text-decoration: underline;
+}
+
+.transcript-machine-text {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.ai-job-status {
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+@media (max-width: 430px) {
+  .ai-usage {
+    grid-template-columns: 1fr;
+  }
+
+  .transcript-segments > li {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 430px) {

@@ -82,6 +82,7 @@ export type FeedEntry = {
   lifecycle_state?: "active" | "trashed";
   trashed_at?: string | null;
   result_rank?: number;
+  match_source?: "Transcript";
 };
 
 export type EntryRevision = {

@@ -55,9 +55,10 @@ select extensions.is(
     join pg_namespace as n on n.oid = p.pronamespace
     where n.nspname = 'app'
       and 'p_user_id' = any(coalesce(p.proargnames, array[]::text[]))
+      and pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE')
   ),
   0::bigint,
-  'media functions never accept user_id'
+  'authenticated mutation functions never accept user_id'
 );
 select extensions.is(
   (

@@ -102,6 +102,9 @@ export function EntryCard({
           />
         ) : null}
       </div>
+      {entry.match_source ? (
+        <p className="search-match-source">Matched transcript</p>
+      ) : null}
       <Link
         href={`/entries/${entry.entry_id}`}
         className="entry-body"

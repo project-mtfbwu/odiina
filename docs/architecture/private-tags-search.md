@@ -6,6 +6,13 @@ search. `/search` is protected, dynamically rendered, marked `noindex`, and all
 private reads use `no-store` request behavior inherited from the authenticated
 application shell.
 
+Increment I extends this same owner-scoped current-snapshot index with optional
+transcript text. The projection is populated only while explicit transcript
+Search consent is on, prefers the latest append-only correction, excludes stale
+or trashed source revisions, and is cleared on consent revocation or derived
+deletion. Search results may state “Matched transcript”; existing media, date,
+tag, place, Trash and cursor behavior is unchanged.
+
 ## Tag identity and immutable evidence
 
 `app.user_tags` is a forced-RLS, per-user catalog. Display labels are Unicode

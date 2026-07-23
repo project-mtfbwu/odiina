@@ -17,6 +17,16 @@ import type {
   UserPreferences,
 } from "@/lib/database/types";
 import { isValidCivilDate, monthStart } from "@/lib/calendar/civil-date";
+import type {
+  AiJob,
+  AiSettings,
+  AiUsage,
+  EntryTranscriptState,
+  InsightDetail,
+  InsightListItem,
+  Transcript,
+  TranscriptSegment,
+} from "@/lib/ai/types";
 import {
   decodeSearchCursor,
   encodeSearchCursor,
@@ -456,9 +466,29 @@ export async function getSearchPage(
   })[];
   const places = (placeResult.data ?? []) as RevisionPlaceRow[];
   const tags = (tagResult.data ?? []) as RevisionTagRow[];
+  const transcriptMatches =
+    parameters.query.trim().length >= 2 && rawEntries.length
+      ? await supabase.schema("app").rpc("transcript_match_entries", {
+          p_entry_ids: rawEntries.map((entry) => entry.entry_id),
+          p_query: parameters.query,
+        })
+      : { data: [], error: null };
+  if (transcriptMatches.error) {
+    throw new Error("transcript_match_read_failed", {
+      cause: transcriptMatches.error,
+    });
+  }
+  const transcriptEntryIds = new Set(
+    (transcriptMatches.data ?? []).map(
+      (row: { entry_id: string }) => row.entry_id,
+    ),
+  );
   const entries: FeedEntry[] = rawEntries.map((entry) => ({
     ...entry,
     result_rank: Number(entry.result_rank ?? 0),
+    match_source: transcriptEntryIds.has(entry.entry_id)
+      ? "Transcript"
+      : undefined,
     media: media
       .filter((item) => item.revision_id === entry.current_revision_id)
       .sort((a, b) => a.media_position - b.media_position),
@@ -488,4 +518,163 @@ export async function getSearchPage(
           })
         : null,
   };
+}
+
+export async function getAiSettings(): Promise<AiSettings> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema("app")
+    .from("ai_settings")
+    .select(
+      "master_enabled,transcription_enabled,insights_enabled,transcript_search_enabled,auto_transcribe_enabled,consent_version,consent_policy_version,provider_policy_version,updated_at",
+    )
+    .single();
+  if (error || !data)
+    throw new Error("ai_settings_read_failed", { cause: error });
+  return data as AiSettings;
+}
+
+export async function getAiUsage(): Promise<AiUsage> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.schema("app").rpc("ai_usage_summary");
+  const row = (data as Record<string, string | number>[] | null)?.[0];
+  if (error || !row) throw new Error("ai_usage_read_failed", { cause: error });
+  return {
+    transcription_minutes_month: Number(row.transcription_minutes_month),
+    insight_requests_today: Number(row.insight_requests_today),
+    insight_requests_month: Number(row.insight_requests_month),
+    active_jobs: Number(row.active_jobs),
+  };
+}
+
+export async function getEntryTranscriptState(
+  entryId: string,
+  revisionId: string,
+): Promise<EntryTranscriptState> {
+  const supabase = await createSupabaseServerClient();
+  const [
+    { data: jobData, error: jobError },
+    { data: transcriptData, error: transcriptError },
+  ] = await Promise.all([
+    supabase
+      .schema("app")
+      .from("ai_jobs")
+      .select(
+        "id,job_kind,status,safe_error_code,cancel_requested,attempts,updated_at",
+      )
+      .eq("job_kind", "transcription")
+      .eq("entry_id", entryId)
+      .eq("revision_id", revisionId)
+      .order("queued_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .schema("app")
+      .from("transcripts")
+      .select(
+        "id,job_id,entry_id,revision_id,attachment_id,source_kind,language,language_hint,language_confidence,timing_kind,provider_id,model_id,status,current,search_enabled,completed_at",
+      )
+      .eq("entry_id", entryId)
+      .eq("revision_id", revisionId)
+      .eq("current", true)
+      .maybeSingle(),
+  ]);
+  if (jobError || transcriptError) {
+    throw new Error("transcript_state_read_failed", {
+      cause: jobError ?? transcriptError,
+    });
+  }
+  let transcript: Transcript | null = null;
+  if (transcriptData) {
+    const [
+      { data: segments, error: segmentError },
+      { data: corrections, error: correctionError },
+    ] = await Promise.all([
+      supabase
+        .schema("app")
+        .from("transcript_segments")
+        .select("id,position,start_ms,end_ms,machine_text")
+        .eq("transcript_id", transcriptData.id)
+        .order("position"),
+      supabase
+        .schema("app")
+        .from("transcript_corrections")
+        .select("segment_id,corrected_text,created_at,id")
+        .eq("transcript_id", transcriptData.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false }),
+    ]);
+    if (segmentError || correctionError) {
+      throw new Error("transcript_segments_read_failed", {
+        cause: segmentError ?? correctionError,
+      });
+    }
+    const latest = new Map<
+      string,
+      { corrected_text: string; created_at: string }
+    >();
+    for (const correction of corrections ?? []) {
+      if (!latest.has(correction.segment_id))
+        latest.set(correction.segment_id, correction);
+    }
+    transcript = {
+      ...(transcriptData as Omit<Transcript, "segments">),
+      language_confidence:
+        transcriptData.language_confidence === null
+          ? null
+          : Number(transcriptData.language_confidence),
+      segments: (segments ?? []).map((segment) => {
+        const correction = latest.get(segment.id);
+        return {
+          ...segment,
+          corrected_text: correction?.corrected_text ?? null,
+          corrected_at: correction?.created_at ?? null,
+        } as TranscriptSegment;
+      }),
+    };
+  }
+  return {
+    transcript,
+    job: (jobData as AiJob | null) ?? null,
+  };
+}
+
+export async function getInsights(): Promise<InsightListItem[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema("app")
+    .from("insights")
+    .select("id,scope,range_start,range_end,title,summary,status,created_at")
+    .in("status", ["ready", "stale"])
+    .order("created_at", { ascending: false });
+  if (error) throw new Error("insights_read_failed", { cause: error });
+  return (data ?? []) as InsightListItem[];
+}
+
+export async function getInsightDetail(
+  insightId: string,
+): Promise<InsightDetail> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema("app")
+    .from("insights")
+    .select(
+      "id,scope,range_start,range_end,title,summary,key_moments,topics,open_loops,limitations,provider_id,model_id,status,created_at",
+    )
+    .eq("id", insightId)
+    .in("status", ["ready", "stale"])
+    .maybeSingle();
+  if (error) throw new Error("insight_read_failed", { cause: error });
+  if (!data) notFound();
+  const { data: sources, error: sourceError } = await supabase
+    .schema("app")
+    .from("insight_sources")
+    .select(
+      "id,entry_id,revision_id,occurred_local_date,evidence_excerpt,source_unavailable,start_ms,end_ms",
+    )
+    .eq("insight_id", insightId)
+    .order("source_position");
+  if (sourceError)
+    throw new Error("insight_sources_read_failed", { cause: sourceError });
+  return { ...data, sources: sources ?? [] } as InsightDetail;
 }

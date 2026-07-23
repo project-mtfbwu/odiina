@@ -30,6 +30,27 @@ const safeErrorMap: Record<string, string> = {
   odiina_tag_limit: "An Entry can have up to 10 tags.",
   odiina_tag_duplicate: "Remove the duplicate tag and try again.",
   odiina_search_invalid: "Check the private search filters and try again.",
+  odiina_ai_settings_invalid: "Review the AI privacy choices and try again.",
+  odiina_ai_provider_unavailable:
+    "No approved AI provider is available. Your content was not sent anywhere.",
+  odiina_transcription_consent_required:
+    "Turn on private transcription consent in AI settings first.",
+  odiina_insights_consent_required:
+    "Turn on private insights consent in AI settings first.",
+  odiina_transcription_source_unavailable:
+    "This accepted voice note or video audio is unavailable for transcription.",
+  odiina_video_has_no_audio: "This video has no audio track to transcribe.",
+  odiina_monthly_transcription_quota:
+    "The monthly transcription limit has been reached.",
+  odiina_insight_quota: "The private insight request limit has been reached.",
+  odiina_concurrent_job_limit:
+    "Two private AI jobs are already active. Wait for one to finish.",
+  odiina_insight_sources_empty:
+    "No eligible private Entries match this insight scope.",
+  odiina_insight_input_limit:
+    "Narrow the date range or filters before generating this insight.",
+  odiina_ai_job_unavailable: "That private AI job is unavailable.",
+  odiina_ai_artifact_unavailable: "That private AI result is unavailable.",
 };
 
 export function safeErrorMessage(code: string | undefined): string {
