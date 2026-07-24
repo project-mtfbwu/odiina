@@ -7,7 +7,6 @@ import {
 } from "@playwright/test";
 import sharp from "sharp";
 
-const invitedEmail = "journey@example.test";
 const mailboxUrl = process.env.ODIINA_MAILBOX_URL ?? "http://127.0.0.1:54324";
 
 type MailpitMessage = {
@@ -31,6 +30,7 @@ async function mailIds(request: APIRequestContext): Promise<Set<string>> {
 async function waitForMagicLink(
   request: APIRequestContext,
   existingIds: Set<string>,
+  invitedEmail: string,
 ): Promise<string> {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const response = await request.get(`${mailboxUrl}/api/v1/messages`);
@@ -83,12 +83,21 @@ test("@authenticated completes Odiina Increments A through D", async ({
   context,
   page,
   request,
-}) => {
+}, testInfo) => {
   test.setTimeout(360_000);
   test.skip(
     process.env.ODIINA_E2E !== "1",
     "Requires a reset local Supabase stack, Mailpit and ODIINA_E2E=1.",
   );
+  const invitedEmail = testInfo.project.name.includes("mobile")
+    ? "vertical-slice-mobile@example.test"
+    : "vertical-slice-desktop@example.test";
+  const profileName = testInfo.project.name.includes("mobile")
+    ? "Journey Mobile"
+    : "Journey Desktop";
+  const profileHandle = testInfo.project.name.includes("mobile")
+    ? "journey_mobile"
+    : "journey_desktop";
 
   await page.addInitScript(() => {
     const state = window as typeof window & {
@@ -159,7 +168,11 @@ test("@authenticated completes Odiina Increments A through D", async ({
   await page.getByRole("button", { name: "Email me a magic link" }).click();
   await expect(page).toHaveURL(/status=check-email/);
 
-  const magicLink = await waitForMagicLink(request, priorMessages);
+  const magicLink = await waitForMagicLink(
+    request,
+    priorMessages,
+    invitedEmail,
+  );
   await page.goto(magicLink);
   await expect(page).toHaveURL(/\/onboarding$/);
   await expect(
@@ -189,8 +202,8 @@ test("@authenticated completes Odiina Increments A through D", async ({
   await expect(
     page.getByRole("heading", { name: "Edit Profile" }),
   ).toBeVisible();
-  await page.getByLabel("Display name").fill("Journey Example");
-  await page.getByLabel("Handle").fill("journey_example");
+  await page.getByLabel("Display name").fill(profileName);
+  await page.getByLabel("Handle").fill(profileHandle);
   await page
     .getByLabel("Bio")
     .fill("Private days, recorded honestly.\nBuilt one Entry at a time.");
@@ -235,17 +248,11 @@ test("@authenticated completes Odiina Increments A through D", async ({
   await expect(page).toHaveURL(/\/profile\?saved=1#profile-edit-action$/);
   await expect(page.getByRole("status")).toHaveText("Profile saved.");
   await expect(page.getByRole("link", { name: "Edit Profile" })).toBeFocused();
-  await expect(
-    page.getByRole("heading", { name: "Journey Example" }),
-  ).toBeVisible();
-  await expect(page.locator(".profile-handle")).toHaveText("@journey_example");
+  await expect(page.getByRole("heading", { name: profileName })).toBeVisible();
+  await expect(page.locator(".profile-handle")).toHaveText(`@${profileHandle}`);
   await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "Journey Example" }),
-  ).toBeVisible();
-  await expect(page.locator(".rail-profile-name")).toHaveText(
-    "Journey Example",
-  );
+  await expect(page.getByRole("heading", { name: profileName })).toBeVisible();
+  await expect(page.locator(".rail-profile-name")).toHaveText(profileName);
   await expect(page.locator(".profile-banner img")).toBeVisible();
   await expect(page.locator(".profile-avatar-large img")).toBeVisible();
   for (const role of ["avatar", "banner"]) {
@@ -561,9 +568,7 @@ test("@authenticated completes Odiina Increments A through D", async ({
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("link", { name: "Cancel" }).click();
   await expect(page).toHaveURL(/\/profile#profile-edit-action$/);
-  await expect(
-    page.getByRole("heading", { name: "Journey Example" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: profileName })).toBeVisible();
   await expect(page.getByRole("link", { name: "Edit Profile" })).toBeFocused();
   await page.getByRole("link", { name: "Edit Profile" }).click();
   await page
@@ -574,7 +579,7 @@ test("@authenticated completes Odiina Increments A through D", async ({
   const initialsAvatar = page.locator('.profile-avatar-large[role="img"]');
   await expect(initialsAvatar).toBeVisible();
   await expect(initialsAvatar).toHaveAccessibleName(
-    "Journey Example's initials",
+    `${profileName}'s initials`,
   );
   expect((await page.request.get("/api/profile/media/avatar")).status()).toBe(
     404,

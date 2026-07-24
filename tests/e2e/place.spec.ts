@@ -256,7 +256,9 @@ test("@place-journey creates, revises, recalls, trashes, restores and redacts pl
   await page
     .getByRole("button", { name: "Remove place from all revisions" })
     .click();
+  const redactionReloaded = page.waitForEvent("load");
   await page.getByRole("button", { name: "Remove permanently" }).click();
+  await redactionReloaded;
   // The two historical place snapshots are redacted; the current third
   // revision already contains no place.
   await expect(
@@ -264,6 +266,12 @@ test("@place-journey creates, revises, recalls, trashes, restores and redacts pl
   ).toHaveCount(2);
   await expect(page.getByText(firstPlace, { exact: true })).toHaveCount(0);
   await expect(page.getByText(secondPlace, { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("status", { name: "Loading Odiina" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: /Revision 3.*Current/ }),
+  ).toBeVisible();
 
   await page.screenshot({
     path: `test-results/evidence/increment-g-redacted-${testInfo.project.name}.png`,

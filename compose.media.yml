@@ -23,6 +23,9 @@ services:
       - .env.local
     environment:
       SUPABASE_URL: http://host.docker.internal:54321
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      ODIINA_MEDIA_WORKER_EMAIL: ${ODIINA_MEDIA_WORKER_EMAIL:-}
+      ODIINA_MEDIA_WORKER_PASSWORD: ${ODIINA_MEDIA_WORKER_PASSWORD:-}
       ODIINA_CLAMAV_HOST: clamav
       ODIINA_FFMPEG_PATH: /usr/bin/ffmpeg
       ODIINA_FFPROBE_PATH: /usr/bin/ffprobe

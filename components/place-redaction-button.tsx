@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Button,
   Dialog,
@@ -18,7 +17,6 @@ export function PlaceRedactionButton({
   entryId: string;
   csrfToken: string;
 }) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,7 +35,7 @@ export function PlaceRedactionButton({
         );
       }
       close();
-      router.refresh();
+      window.location.reload();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Try again.");
     } finally {

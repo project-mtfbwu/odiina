@@ -6,7 +6,7 @@ import {
   type Page,
 } from "@playwright/test";
 
-const invitedEmail = "journey@example.test";
+const setupEmail = "journey@example.test";
 const mailboxUrl = process.env.ODIINA_MAILBOX_URL ?? "http://127.0.0.1:54324";
 
 type MailpitMessage = {
@@ -17,6 +17,7 @@ type MailpitMessage = {
 async function magicLink(
   request: APIRequestContext,
   existing: Set<string>,
+  invitedEmail: string,
 ): Promise<string> {
   await expect
     .poll(
@@ -81,12 +82,15 @@ test("@calendar-journey recalls and corrects occurrence dates", async ({
   context,
   page,
   request,
-}) => {
+}, testInfo) => {
   test.setTimeout(180_000);
   test.skip(
     process.env.ODIINA_E2E !== "1",
     "Requires a reset local Supabase stack, Mailpit and ODIINA_E2E=1.",
   );
+  const journeyEmail = testInfo.project.name.includes("mobile")
+    ? "calendar-journey-mobile@example.test"
+    : "calendar-journey-desktop@example.test";
 
   const list = await request.get(`${mailboxUrl}/api/v1/messages`);
   const existing = new Set(
@@ -95,9 +99,9 @@ test("@calendar-journey recalls and corrects occurrence dates", async ({
     ).map((message) => message.ID),
   );
   await page.goto("/login");
-  await page.getByLabel("Email address").fill(invitedEmail);
+  await page.getByLabel("Email address").fill(journeyEmail);
   await page.getByRole("button", { name: "Email me a magic link" }).click();
-  await page.goto(await magicLink(request, existing));
+  await page.goto(await magicLink(request, existing, journeyEmail));
   await expect(page).toHaveURL(/\/onboarding$/);
   await page.getByLabel("IANA timezone").fill("UTC");
   await page.getByRole("button", { name: "Confirm and continue" }).click();
@@ -227,9 +231,9 @@ test("@calendar-setup confirms the invited user's timezone", async ({
     ).map((message) => message.ID),
   );
   await page.goto("/login");
-  await page.getByLabel("Email address").fill(invitedEmail);
+  await page.getByLabel("Email address").fill(setupEmail);
   await page.getByRole("button", { name: "Email me a magic link" }).click();
-  await page.goto(await magicLink(request, existing));
+  await page.goto(await magicLink(request, existing, setupEmail));
   await expect(page).toHaveURL(/\/onboarding$/);
   const csrf = (await context.cookies()).find(
     (cookie) => cookie.name === "odiina_csrf",

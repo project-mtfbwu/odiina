@@ -335,8 +335,12 @@ test("@search-journey creates tags, searches, revises, trashes and restores", as
   await expect(
     page.locator("article.entry-card").filter({ hasText: body }),
   ).toBeVisible();
-  await expect(page.getByLabel(workTag)).toBeChecked();
-  await expect(page.getByLabel(guitarTag)).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: workTag, exact: true }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole("checkbox", { name: guitarTag, exact: true }),
+  ).toBeChecked();
   if (mobile) {
     await page.screenshot({
       path: "test-results/evidence/increment-h-filtered-results-mobile.png",

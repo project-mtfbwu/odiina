@@ -1,6 +1,27 @@
 import { createClient } from "@supabase/supabase-js";
 
-const email = "journey@example.test";
+const users = [
+  {
+    email: "journey@example.test",
+    displayName: "Journey Example",
+  },
+  {
+    email: "vertical-slice-desktop@example.test",
+    displayName: "Vertical Slice Desktop",
+  },
+  {
+    email: "vertical-slice-mobile@example.test",
+    displayName: "Vertical Slice Mobile",
+  },
+  {
+    email: "calendar-journey-desktop@example.test",
+    displayName: "Calendar Journey Desktop",
+  },
+  {
+    email: "calendar-journey-mobile@example.test",
+    displayName: "Calendar Journey Mobile",
+  },
+];
 const supabaseUrl =
   process.env.SUPABASE_URL ?? process.env.ODIINA_E2E_SUPABASE_URL;
 const serviceRoleKey = process.env.ODIINA_E2E_SERVICE_ROLE_KEY;
@@ -32,23 +53,32 @@ if (listError) {
   throw listError;
 }
 
-const existing = usersPage.users.find(
-  (candidate) => candidate.email?.toLowerCase() === email,
-);
-if (existing) {
-  const { error } = await supabase.auth.admin.deleteUser(existing.id, false);
-  if (error) {
-    throw error;
+for (const user of users) {
+  const existing = usersPage.users.find(
+    (candidate) => candidate.email?.toLowerCase() === user.email,
+  );
+  if (existing) {
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      existing.id,
+      {
+        email_confirm: true,
+        user_metadata: { display_name: user.displayName },
+      },
+    );
+    if (updateError) {
+      throw updateError;
+    }
+    continue;
+  }
+
+  const { error: createError } = await supabase.auth.admin.createUser({
+    email: user.email,
+    email_confirm: true,
+    user_metadata: { display_name: user.displayName },
+  });
+  if (createError) {
+    throw createError;
   }
 }
 
-const { error: createError } = await supabase.auth.admin.createUser({
-  email,
-  email_confirm: true,
-  user_metadata: { display_name: "Journey Example" },
-});
-if (createError) {
-  throw createError;
-}
-
-console.log(`Created local login-capable test user ${email}.`);
+console.log(`Created ${users.length} isolated local login-capable test users.`);

@@ -9,6 +9,11 @@ Odiina Chat.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
+The complete product handoff is in
+[`docs/handoff/ODIINA_PRODUCT_HANDOFF.md`](docs/handoff/ODIINA_PRODUCT_HANDOFF.md).
+The integrated local certification record and unresolved gates are in
+[`docs/release/ODIINA_V1_RELEASE_READINESS.md`](docs/release/ODIINA_V1_RELEASE_READINESS.md).
+
 ## Implemented scope
 
 - Responsive application shell and accessible public sign-in screen
@@ -234,6 +239,11 @@ loopback Supabase, and must never be written to `.env.local`. See the exact
 commands in [vertical-slice-2.md](docs/implementation/vertical-slice-2.md).
 The running worker uses only the publishable key plus its own non-human
 credentials.
+
+To run that worker in the media container, keep the publishable key, worker
+email and worker password in the same temporary PowerShell environment and run
+`corepack pnpm media:worker:container`. Compose passes those values directly to
+the worker container; do not write them into `.env.local`.
 
 For a hosted Supabase project, set `ODIINA_STORAGE_TUS_URL` to the reviewed
 direct Storage signed-upload endpoint. Do not assume the local default or a

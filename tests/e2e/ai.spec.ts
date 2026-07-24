@@ -191,10 +191,13 @@ test("@ai-provider-journey transcribes, corrects, searches and cites synthetic e
   });
 
   await page.goto("/search?q=Corrected%20synthetic%20rehearsal");
-  await expect(page.getByText("Matched transcript")).toBeVisible();
+  const transcriptResult = page
+    .locator("article.entry-card")
+    .filter({ hasText: body });
   await expect(
-    page.locator("article.entry-card").filter({ hasText: body }),
+    transcriptResult.getByText("Matched transcript", { exact: true }),
   ).toBeVisible();
+  await expect(transcriptResult).toBeVisible();
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/insights");
@@ -211,9 +214,16 @@ test("@ai-provider-journey transcribes, corrects, searches and cites synthetic e
   await expect(
     page.getByRole("heading", { name: "Evidence citations" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /Open accepted Entry revision/ }),
-  ).toBeVisible();
+  const citationLinks = page
+    .getByRole("region", { name: "Evidence citations" })
+    .getByRole("link", { name: /Open accepted Entry revision/ });
+  expect(await citationLinks.count()).toBeGreaterThan(0);
+  await expect(citationLinks.first()).toBeVisible();
+  for (const href of await citationLinks.evaluateAll((links) =>
+    links.map((link) => link.getAttribute("href")),
+  )) {
+    expect(href).toMatch(/^\/entries\/[0-9a-f-]{36}$/);
+  }
   await expectAccessible(page);
   await page.screenshot({
     path: "test-results/evidence/increment-i-insight-1440.png",

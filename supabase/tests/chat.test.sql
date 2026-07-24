@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(44);
+select extensions.plan(45);
 
 select extensions.ok((select bool_and(relrowsecurity and relforcerowsecurity)
   from pg_catalog.pg_class where oid=any(array[
@@ -13,6 +13,9 @@ select extensions.ok(not has_function_privilege('anon',
 select extensions.ok(not has_function_privilege('public',
   'app.request_chat(uuid,text,text,jsonb,uuid)','EXECUTE'),
   'PUBLIC cannot request Chat work');
+select extensions.ok(not has_function_privilege('public',
+  'app.claim_ai_job(integer)','EXECUTE'),
+  'PUBLIC cannot invoke the private AI worker queue');
 select extensions.ok(has_function_privilege('authenticated',
   'app.request_chat(uuid,text,text,jsonb,uuid)','EXECUTE'),
   'authenticated owners may request Chat work');
