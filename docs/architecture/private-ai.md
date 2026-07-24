@@ -84,3 +84,13 @@ introduction and reflection separate. Stale or deleted insight state marks the
 derived report stale, and deleting AI-derived data revokes shares that copied
 that narrative. Turning the master switch off never disables factual report
 creation.
+
+## Odiina Chat integration
+
+Increment K reuses this provider abstraction, restricted principal and durable
+job queue for the `chat` job kind. Chat has separate default-off consent under
+Master AI and Insights. Its server-built packet comes from the owner-scoped
+current Search projection, not direct provider retrieval. Answers persist only
+after their source IDs validate against that packet. Saved/temporary retention,
+source lifecycle, quotas and the production gate are detailed in
+[private-odiina-chat.md](private-odiina-chat.md).

@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 
 import {
   assertProviderOutputSize,
+  FakeChatProvider,
   FakeInsightProvider,
   FakeTranscriptionProvider,
 } from "./ai/fake-providers.mjs";
@@ -31,6 +32,7 @@ if (!fakeAllowed) {
 const once = process.argv.includes("--once");
 const transcriptionProvider = new FakeTranscriptionProvider();
 const insightProvider = new FakeInsightProvider();
+const chatProvider = new FakeChatProvider();
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_PUBLISHABLE_KEY,
@@ -90,7 +92,7 @@ async function processJob(job) {
         p_output: output,
       });
     rpcError(result.error);
-  } else {
+  } else if (job.job_kind === "insight") {
     await heartbeat(job, "generating");
     const output = assertProviderOutputSize(
       await insightProvider.generate({
@@ -106,6 +108,25 @@ async function processJob(job) {
       p_output: output,
     });
     rpcError(result.error);
+  } else if (job.job_kind === "chat") {
+    await heartbeat(job, "generating");
+    const snapshot = job.source_snapshot ?? {};
+    const output = assertProviderOutputSize(
+      await chatProvider.answer({
+        question: snapshot.question,
+        evidence: snapshot.evidence,
+        fixture: process.env.ODIINA_AI_FAKE_FIXTURE,
+      }),
+    );
+    await heartbeat(job, "processing_response");
+    const result = await supabase.schema("app").rpc("finish_chat_job", {
+      p_job_id: job.job_id,
+      p_lease_token: job.lease_token,
+      p_output: output,
+    });
+    rpcError(result.error);
+  } else {
+    throw new Error("unsupported_ai_job_kind");
   }
 }
 

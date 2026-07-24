@@ -28,6 +28,17 @@ Each revision stores zero to ten ordered memberships in
 revision, and catalog tag. Normal editing appends a revision and never changes
 older memberships. The first accepted clean capitalization remains the catalog
 display form; global rename and destructive catalog cleanup are deferred.
+
+## Odiina Chat retrieval
+
+Increment K reuses the current-revision `entry_search_documents` projection
+through a server-validated lexical plan. Chat does not fetch the Feed to derive
+answers and does not add a parallel vector index. Civil dates, canonical tags,
+accepted media kinds and confirmed non-redacted place labels remain the same
+owner-scoped filters used by Search. Transcript terms enter Chat evidence only
+while the separate transcript-Search consent is active. The bounded evidence
+packet is then citation-validated by the existing restricted AI worker; the
+provider never receives SQL, a user ID or database access.
 Unused catalog tags may remain as private suggestions because immutable history
 can still reference them.
 

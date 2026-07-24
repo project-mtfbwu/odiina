@@ -97,6 +97,19 @@ export default async function SettingsPage() {
         </Link>
       </section>
 
+      <section className="panel mt-4 p-5 sm:p-7" aria-labelledby="chat-heading">
+        <h2 id="chat-heading" className="mt-0 text-xl font-bold">
+          Odiina Chat
+        </h2>
+        <p className="leading-7 text-[var(--muted)]">
+          Ask your private Odiina memory. OC is read-only, evidence-backed and
+          available only after separate Chat consent.
+        </p>
+        <Link className="button button-secondary" href="/chat">
+          Open Odiina Chat
+        </Link>
+      </section>
+
       <section
         className="panel mt-4 p-5 sm:p-7"
         aria-labelledby="session-heading"

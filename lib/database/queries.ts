@@ -44,6 +44,12 @@ import type {
   ReportShare,
   ReportSource,
 } from "@/lib/reports/types";
+import type {
+  ChatCitation,
+  ChatConversationDetail,
+  ChatConversationListItem,
+  ChatMessage,
+} from "@/lib/chat/types";
 
 export const feedPageSize = 24;
 
@@ -537,7 +543,7 @@ export async function getAiSettings(): Promise<AiSettings> {
     .schema("app")
     .from("ai_settings")
     .select(
-      "master_enabled,transcription_enabled,insights_enabled,transcript_search_enabled,auto_transcribe_enabled,consent_version,consent_policy_version,provider_policy_version,updated_at",
+      "master_enabled,transcription_enabled,insights_enabled,chat_enabled,semantic_memory_enabled,transcript_search_enabled,auto_transcribe_enabled,consent_version,consent_policy_version,provider_policy_version,updated_at",
     )
     .single();
   if (error || !data)
@@ -547,14 +553,21 @@ export async function getAiSettings(): Promise<AiSettings> {
 
 export async function getAiUsage(): Promise<AiUsage> {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.schema("app").rpc("ai_usage_summary");
+  const [{ data, error }, chat] = await Promise.all([
+    supabase.schema("app").rpc("ai_usage_summary"),
+    supabase.schema("app").rpc("chat_usage_summary"),
+  ]);
   const row = (data as Record<string, string | number>[] | null)?.[0];
-  if (error || !row) throw new Error("ai_usage_read_failed", { cause: error });
+  const chatRow = (chat.data as Record<string, string | number>[] | null)?.[0];
+  if (error || chat.error || !row || !chatRow)
+    throw new Error("ai_usage_read_failed", { cause: error ?? chat.error });
   return {
     transcription_minutes_month: Number(row.transcription_minutes_month),
     insight_requests_today: Number(row.insight_requests_today),
     insight_requests_month: Number(row.insight_requests_month),
     active_jobs: Number(row.active_jobs),
+    chat_questions_today: Number(chatRow.questions_today),
+    chat_questions_month: Number(chatRow.questions_month),
   };
 }
 
@@ -850,4 +863,85 @@ export async function getReportDetail(reportId: string): Promise<ReportDetail> {
     shares: (shareResult.data ?? []) as ReportShare[],
     citations: (citationResult.data ?? []) as ReportCitation[],
   } as ReportDetail;
+}
+
+export async function getChatConversations(): Promise<
+  ChatConversationListItem[]
+> {
+  const supabase = await createSupabaseServerClient();
+  const purge = await supabase
+    .schema("app")
+    .rpc("purge_expired_temporary_chats");
+  if (purge.error)
+    throw new Error("chat_expiry_cleanup_failed", { cause: purge.error });
+  const { data, error } = await supabase
+    .schema("app")
+    .from("chat_conversations")
+    .select("id,mode,title,last_activity_at,created_at")
+    .eq("mode", "saved")
+    .eq("status", "active")
+    .order("last_activity_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error("chat_history_read_failed", { cause: error });
+  return (data ?? []) as ChatConversationListItem[];
+}
+
+export async function getChatConversation(
+  conversationId: string,
+): Promise<ChatConversationDetail> {
+  const supabase = await createSupabaseServerClient();
+  const purge = await supabase
+    .schema("app")
+    .rpc("purge_expired_temporary_chats");
+  if (purge.error)
+    throw new Error("chat_expiry_cleanup_failed", { cause: purge.error });
+  const { data, error } = await supabase
+    .schema("app")
+    .from("chat_conversations")
+    .select(
+      "id,mode,title,last_activity_at,created_at,context_state,expires_at",
+    )
+    .eq("id", conversationId)
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw new Error("chat_read_failed", { cause: error });
+  if (!data) notFound();
+  const [
+    { data: messages, error: messageError },
+    { data: sources, error: sourceError },
+  ] = await Promise.all([
+    supabase
+      .schema("app")
+      .from("chat_messages")
+      .select(
+        "id,role,content,status,safe_error_code,unsupported_claims_removed,created_at",
+      )
+      .eq("conversation_id", conversationId)
+      .order("created_at")
+      .order("id"),
+    supabase
+      .schema("app")
+      .from("chat_turn_sources")
+      .select(
+        "id,assistant_message_id,citation_key,source_kind,entry_id,transcript_id,transcript_segment_id,report_id,insight_id,occurred_local_date,start_ms,end_ms,evidence_excerpt,source_unavailable,source_stale",
+      )
+      .eq("conversation_id", conversationId)
+      .order("citation_key"),
+  ]);
+  if (messageError || sourceError)
+    throw new Error("chat_messages_read_failed", {
+      cause: messageError ?? sourceError,
+    });
+  const citations = (sources ?? []) as (ChatCitation & {
+    assistant_message_id: string;
+  })[];
+  return {
+    ...(data as Omit<ChatConversationDetail, "messages">),
+    messages: (messages ?? []).map((message) => ({
+      ...message,
+      citations: citations.filter(
+        (citation) => citation.assistant_message_id === message.id,
+      ),
+    })) as ChatMessage[],
+  };
 }

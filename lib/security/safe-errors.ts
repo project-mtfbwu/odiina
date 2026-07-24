@@ -51,6 +51,20 @@ const safeErrorMap: Record<string, string> = {
     "Narrow the date range or filters before generating this insight.",
   odiina_ai_job_unavailable: "That private AI job is unavailable.",
   odiina_ai_artifact_unavailable: "That private AI result is unavailable.",
+  odiina_chat_consent_required:
+    "Enable Master AI, private Insights and Odiina Chat consent first.",
+  odiina_chat_request_invalid: "Enter a shorter Odiina Chat question.",
+  odiina_chat_conversation_unavailable:
+    "That private conversation is unavailable or expired.",
+  odiina_chat_quota: "The Odiina Chat question limit has been reached.",
+  odiina_chat_rate_limited:
+    "Too many Chat requests arrived at once. Wait briefly and try again.",
+  odiina_chat_evidence_limit:
+    "Narrow the question, dates or filters before asking again.",
+  odiina_chat_turn_limit:
+    "This conversation reached its turn limit. Start a new Chat.",
+  odiina_chat_conversation_limit:
+    "Delete an older saved conversation before creating another.",
 };
 
 export function safeErrorMessage(code: string | undefined): string {

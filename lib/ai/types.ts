@@ -2,6 +2,8 @@ export type AiSettings = {
   master_enabled: boolean;
   transcription_enabled: boolean;
   insights_enabled: boolean;
+  chat_enabled: boolean;
+  semantic_memory_enabled: boolean;
   transcript_search_enabled: boolean;
   auto_transcribe_enabled: boolean;
   consent_version: number;
@@ -15,6 +17,8 @@ export type AiUsage = {
   insight_requests_today: number;
   insight_requests_month: number;
   active_jobs: number;
+  chat_questions_today: number;
+  chat_questions_month: number;
 };
 
 export type TranscriptSegment = {
@@ -49,7 +53,7 @@ export type Transcript = {
 
 export type AiJob = {
   id: string;
-  job_kind: "transcription" | "insight";
+  job_kind: "transcription" | "insight" | "chat";
   status:
     | "queued"
     | "sending"

@@ -4,6 +4,8 @@ export const aiSettingsInputSchema = z.object({
   masterEnabled: z.boolean(),
   transcriptionEnabled: z.boolean(),
   insightsEnabled: z.boolean(),
+  chatEnabled: z.boolean().default(false),
+  semanticMemoryEnabled: z.literal(false).default(false),
   transcriptSearchEnabled: z.boolean(),
   autoTranscribeEnabled: z.literal(false),
   deleteDerivedData: z.boolean().default(false),

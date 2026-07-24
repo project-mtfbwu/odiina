@@ -230,3 +230,20 @@ Schedule rows record disabled user intent only. Their execution flag is forced
 false and their state forced paused because no durable scheduler exists. This
 is not a worker implementation. Export records cover authenticated Markdown;
 print HTML is rendered on demand and no PDF artifact is claimed.
+
+# Increment K extension — private Odiina Chat
+
+Migration `202607290001_odiina_chat.sql` extends the existing AI settings,
+usage and durable job relations for default-off Chat. It adds forced-RLS
+`chat_conversations`, `chat_messages`, `chat_turn_sources` and `chat_job_links`
+with exact owner/evidence keys. Temporary rows expire within one hour. Semantic
+memory is constrained off; no vector extension or embedding column exists.
+
+`request_chat` builds an idempotent, quota-bound job from a server-planned,
+allowlisted lexical scope. `build_chat_evidence` reads current owner Search
+documents and eligible private reports without fetching an unbounded Feed.
+`finish_chat_job` is restricted to the leased AI worker and validates every
+citation against the frozen packet before persistence. Entry changes, Trash,
+restore, transcript deletion and place redaction propagate stale, unavailable
+or redacted source state. Chat deletion scrubs content snapshots but never
+deletes original evidence.

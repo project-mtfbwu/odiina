@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { DeleteAiArtifactButton } from "@/components/delete-ai-artifact-button";
@@ -21,6 +21,7 @@ export function TranscriptPanel({
   state,
   enabled,
   providerAvailable,
+  initialSeekMs,
   csrfToken,
 }: {
   entryId: string;
@@ -29,6 +30,7 @@ export function TranscriptPanel({
   state: EntryTranscriptState;
   enabled: boolean;
   providerAvailable: boolean;
+  initialSeekMs?: number | null;
   csrfToken: string;
 }) {
   const router = useRouter();
@@ -41,6 +43,15 @@ export function TranscriptPanel({
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [correction, setCorrection] = useState("");
+
+  useEffect(() => {
+    if (initialSeekMs === null || initialSeekMs === undefined) return;
+    window.dispatchEvent(
+      new CustomEvent("odiina:media-seek", {
+        detail: { milliseconds: initialSeekMs },
+      }),
+    );
+  }, [initialSeekMs]);
 
   if (!source) return null;
   async function requestTranscript() {
@@ -168,7 +179,7 @@ export function TranscriptPanel({
         <>
           <ol className="transcript-segments">
             {state.transcript.segments.map((segment) => (
-              <li key={segment.id}>
+              <li key={segment.id} id={`transcript-${segment.id}`}>
                 <button
                   className="transcript-time"
                   type="button"

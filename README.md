@@ -4,7 +4,8 @@ Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
 This repository contains the local scaffold and the implemented MVP increments
-through private reports and controlled text-only sharing.
+through private reports, controlled text-only sharing and evidence-backed
+Odiina Chat.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -47,6 +48,9 @@ tagline or final brand assets have been selected.
 - Authenticated private media in stories with no autoplay
 - Print-friendly HTML and privacy-bounded Markdown export
 - Immutable, expiring and immediately revocable text-only share snapshots
+- Default-off Odiina Chat over current private Search evidence
+- Saved and one-hour temporary conversations with validated source citations
+- Private Chat rename, context reset, text export and deletion controls
 - Calendar recall using explicit occurrence dates
 - Private Profile identity with display name, canonical unique handle and bio
 - Private avatar/banner processing and owner-authorized delivery
@@ -59,7 +63,10 @@ insights behind a default-off master switch. The repository includes only a
 deterministic loopback test provider; no live AI provider is approved or
 configured, and no OpenAI key is required. Increment J adds factual reports
 that remain available with AI disabled and may attach an already authorized
-Increment I insight. Public report links contain curated text only; public
+Increment I insight. Increment K adds read-only Odiina Chat using the same
+durable AI worker and loopback-only fake provider. It adds no embeddings,
+semantic memory, web access, tools or live-provider dependency. Public report
+links contain curated text only; public
 media delivery, server-rendered PDF, durable scheduled execution, provider
 place search, nearby discovery, maps, social features and private-content
 service-worker caching remain unavailable.
@@ -138,6 +145,10 @@ Increment J's factual engine, source snapshots, exports, share threat model and
 deployment gates are documented in
 [increment-j-private-reports.md](docs/implementation/increment-j-private-reports.md)
 and [private-reports-sharing.md](docs/architecture/private-reports-sharing.md).
+Increment K's retrieval, consent, citations, retention and production gates are
+documented in
+[increment-k-odiina-chat.md](docs/implementation/increment-k-odiina-chat.md)
+and [private-odiina-chat.md](docs/architecture/private-odiina-chat.md).
 
 ## Local prerequisites
 
@@ -199,7 +210,7 @@ Only the documented Supabase, application, signed-TUS, worker/scanner, AI-worker
 and feature-flag variables are active. OpenAI is not configured. No secret may
 receive a `NEXT_PUBLIC_` prefix.
 
-For local Increment I testing, set `ODIINA_FEATURE_AI=true`,
+For local Increment I/K testing, set `ODIINA_FEATURE_AI=true`,
 `ODIINA_AI_PROVIDER=fake` and `ODIINA_ALLOW_FAKE_AI=true`. The fake provider is
 refused unless Supabase is on loopback. Bootstrap a dedicated non-human worker
 with a temporary local service-role variable, then remove that variable:
@@ -214,7 +225,8 @@ corepack pnpm ai:worker
 ```
 
 The normal AI worker uses only the publishable key and restricted worker
-credentials. Do not place the bootstrap service-role key in `.env.local`.
+credentials and processes both Insight and Chat jobs. Do not place the
+bootstrap service-role key in `.env.local`.
 
 Media processing needs a separately bootstrapped worker identity. The bootstrap
 service-role key is accepted only from the current process, only against

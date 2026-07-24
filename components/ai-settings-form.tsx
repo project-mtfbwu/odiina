@@ -23,6 +23,7 @@ export function AiSettingsForm({
     initial.transcription_enabled,
   );
   const [insights, setInsights] = useState(initial.insights_enabled);
+  const [chat, setChat] = useState(initial.chat_enabled);
   const [search, setSearch] = useState(initial.transcript_search_enabled);
   const [deleteData, setDeleteData] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -35,6 +36,7 @@ export function AiSettingsForm({
       setTranscription(false);
       setInsights(false);
       setSearch(false);
+      setChat(false);
     }
   }
 
@@ -53,6 +55,8 @@ export function AiSettingsForm({
           masterEnabled: master,
           transcriptionEnabled: master && transcription,
           insightsEnabled: master && insights,
+          chatEnabled: master && insights && chat,
+          semanticMemoryEnabled: false,
           transcriptSearchEnabled: master && transcription && search,
           autoTranscribeEnabled: false,
           deleteDerivedData: !master && deleteData,
@@ -144,13 +148,41 @@ export function AiSettingsForm({
             type="checkbox"
             checked={insights}
             disabled={!master}
-            onChange={(event) => setInsights(event.target.checked)}
+            onChange={(event) => {
+              setInsights(event.target.checked);
+              if (!event.target.checked) setChat(false);
+            }}
           />
           <span>
             <strong>Allow requested private insights</strong>
             <small>
               You preview scope and evidence counts before each generated
               insight.
+            </small>
+          </span>
+        </label>
+        <label className="ai-choice">
+          <input
+            type="checkbox"
+            checked={chat}
+            disabled={!master || !insights}
+            onChange={(event) => setChat(event.target.checked)}
+          />
+          <span>
+            <strong>Allow Odiina Chat</strong>
+            <small>
+              Lets Ask Odiina send a bounded, reviewed evidence packet to the
+              configured provider. Chat remains read-only and off by default.
+            </small>
+          </span>
+        </label>
+        <label className="ai-choice" aria-disabled="true">
+          <input type="checkbox" checked={false} disabled readOnly />
+          <span>
+            <strong>Semantic Memory</strong>
+            <small>
+              Off and unavailable. No embedding provider or vector index is
+              approved; Chat uses private lexical Search instead.
             </small>
           </span>
         </label>
@@ -164,8 +196,8 @@ export function AiSettingsForm({
             <span>
               <strong>Also delete all AI-derived data</strong>
               <small>
-                Removes transcripts, corrections, insights and searchable
-                derivatives. Original Entries and media remain.
+                Removes transcripts, corrections, insights, Chat history and
+                searchable derivatives. Original Entries and media remain.
               </small>
             </span>
           </label>
@@ -205,6 +237,14 @@ export function AiSettingsForm({
         <div>
           <dt>Active jobs</dt>
           <dd>{usage.active_jobs} / 2</dd>
+        </div>
+        <div>
+          <dt>Chat questions today</dt>
+          <dd>{usage.chat_questions_today} / 30</dd>
+        </div>
+        <div>
+          <dt>Chat questions this month</dt>
+          <dd>{usage.chat_questions_month} / 300</dd>
         </div>
       </dl>
       <p className="text-xs leading-5 text-[var(--muted)]">

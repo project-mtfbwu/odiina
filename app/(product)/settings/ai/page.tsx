@@ -26,8 +26,9 @@ export default async function AiSettingsPage() {
           <p className="eyebrow mt-5">Explicit consent</p>
           <h1 className="page-title">Private AI</h1>
           <p className="page-description">
-            Control transcription, searchable transcripts and evidence-linked
-            insights independently. Originals remain private and unchanged.
+            Control transcription, searchable transcripts, evidence-linked
+            insights and Odiina Chat independently. Originals remain private and
+            unchanged.
           </p>
         </div>
       </header>

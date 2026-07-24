@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import {
   CalendarIcon,
+  ChatIcon,
   FeedIcon,
   InsightsIcon,
   PlusIcon,
@@ -22,6 +23,7 @@ const activeItems = [
   { href: "/feed", label: "Feed", icon: FeedIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/search", label: "Search", icon: SearchIcon },
+  { href: "/chat", label: "Odiina Chat", icon: ChatIcon },
   { href: "/insights", label: "Insights", icon: InsightsIcon },
   { href: "/reports", label: "Reports", icon: InsightsIcon },
   { href: "/profile", label: "Profile", icon: ProfileIcon },

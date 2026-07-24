@@ -6,11 +6,15 @@ const authMocks = vi.hoisted(() => ({
   getClaims: vi.fn(),
   signInWithOtp: vi.fn(),
   signOut: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/route-client", () => ({
   createSupabaseRouteClient: () => ({
-    supabase: { auth: authMocks },
+    supabase: {
+      auth: authMocks,
+      schema: () => ({ rpc: authMocks.rpc }),
+    },
     applyAuthState: <T extends NextResponse>(response: T) => {
       response.headers.set(
         "Cache-Control",
@@ -59,6 +63,7 @@ describe("authentication routes", () => {
       error: null,
     });
     authMocks.signOut.mockResolvedValue({ error: null });
+    authMocks.rpc.mockResolvedValue({ data: null, error: null });
   });
 
   it.each([
@@ -138,6 +143,7 @@ describe("authentication routes", () => {
       formRequest("/auth/logout", { csrf: "known-token" }),
     );
     expect(authMocks.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(authMocks.rpc).toHaveBeenCalledWith("delete_temporary_chat_history");
     expect(response.status).toBe(303);
     expect(response.headers.get("cache-control")).toContain("no-store");
   });

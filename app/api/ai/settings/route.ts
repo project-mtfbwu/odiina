@@ -17,6 +17,8 @@ export async function PUT(request: NextRequest) {
         p_master_enabled: input.masterEnabled,
         p_transcription_enabled: input.transcriptionEnabled,
         p_insights_enabled: input.insightsEnabled,
+        p_chat_enabled: input.chatEnabled,
+        p_semantic_memory_enabled: false,
         p_transcript_search_enabled: input.transcriptSearchEnabled,
         p_auto_transcribe_enabled: false,
         p_consent_policy_version: "odiina-ai-consent-v1",
@@ -34,6 +36,10 @@ export async function PUT(request: NextRequest) {
           p_artifact_id: null,
         });
       if (deletion.error) throw deletion.error;
+      const chatDeletion = await supabase
+        .schema("app")
+        .rpc("delete_all_chat_history", { p_include_temporary: true });
+      if (chatDeletion.error) throw chatDeletion.error;
     }
     return data?.[0] ?? null;
   });

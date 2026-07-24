@@ -105,6 +105,15 @@ export function InsightsIcon(props: IconProps) {
   );
 }
 
+export function ChatIcon(props: IconProps) {
+  return (
+    <IconFrame {...props}>
+      <path d="M4 5.5h16v11H9l-5 4v-15Z" {...strokeProps} />
+      <path d="M8 10h8M8 13h5" {...strokeProps} />
+    </IconFrame>
+  );
+}
+
 export function PlusIcon(props: IconProps) {
   return (
     <IconFrame {...props}>

@@ -22,4 +22,15 @@ export class FakeInsightProvider {
   }): Promise<unknown>;
 }
 
+export class FakeChatProvider {
+  readonly providerId: "fake-local";
+  readonly modelId: "deterministic-chat-v1";
+  readonly sendsTextOffDevice: false;
+  answer(request: {
+    question: string;
+    evidence: Array<Record<string, unknown> & { sourceId: string }>;
+    fixture?: string;
+  }): Promise<unknown>;
+}
+
 export function assertProviderOutputSize<T>(value: T, maximumBytes?: number): T;

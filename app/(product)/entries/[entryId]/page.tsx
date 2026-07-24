@@ -28,7 +28,7 @@ export default async function EntryPage({
   searchParams,
 }: {
   params: Promise<{ entryId: string }>;
-  searchParams: Promise<{ mode?: string }>;
+  searchParams: Promise<{ mode?: string; seekMs?: string }>;
 }) {
   const [{ entryId }, query, preferences, cookieStore] = await Promise.all([
     params,
@@ -181,6 +181,11 @@ export default async function EntryPage({
             aiSettings.master_enabled && aiSettings.transcription_enabled
           }
           providerAvailable={getAiRuntimeStatus().providerAvailable}
+          initialSeekMs={
+            query.seekMs && /^\d{1,9}$/u.test(query.seekMs)
+              ? Number(query.seekMs)
+              : null
+          }
           csrfToken={csrf}
         />
       ) : null}

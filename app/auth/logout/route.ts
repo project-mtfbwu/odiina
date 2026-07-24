@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { applyAuthState, supabase } = createSupabaseRouteClient(request);
+  await supabase.schema("app").rpc("delete_temporary_chat_history");
   await supabase.auth.signOut({ scope: "local" });
   return applyAuthState(
     NextResponse.redirect(
