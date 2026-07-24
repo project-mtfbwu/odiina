@@ -205,3 +205,28 @@ and `PUBLIC`/`anon` execution is revoked. `pg_trgm` is installed in the existing
 extensions schema; `unaccent` is intentionally not installed because silently
 removing meaningful international distinctions is outside the approved
 normalization policy.
+
+# Increment J extension — reports and controlled shares
+
+Migration `202607280001_private_reports_sharing.sql` adds typed, forced-RLS
+report tables rather than overloading `insights`. A report freezes the owner,
+civil period, timezone, exact Entry/revision sources, bounded factual metrics,
+ordered sections and explicitly selected accepted media. Report edits never
+mutate source evidence. Source revision changes mark a report stale; Trash
+marks its source unavailable and revokes dependent shares; restore recovers the
+private reference without silently recertifying it. Place redaction clears the
+copied label and revokes any active place-bearing share.
+
+Private mutations remain owned by `odiina_owner_api`. Anonymous resolution is
+isolated under `odiina_share_api`, a separate `NOLOGIN`, `NOINHERIT`,
+`NOBYPASSRLS` role that can select only share manifests and their text sections.
+The resolver uses an empty search path. `anon` cannot read any private report
+table and can execute only the opaque-token resolver. The database stores only
+a SHA-256 token digest and a non-secret display prefix; the 32-byte token is
+returned once at publication. Expired or revoked resolution returns only its
+state, never report content.
+
+Schedule rows record disabled user intent only. Their execution flag is forced
+false and their state forced paused because no durable scheduler exists. This
+is not a worker implementation. Export records cover authenticated Markdown;
+print HTML is rendered on demand and no PDF artifact is claimed.

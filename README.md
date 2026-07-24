@@ -3,8 +3,8 @@
 Odiina is a private raw-life and work feed that turns your daily activity into
 traceable personal intelligence.
 
-This repository contains the local scaffold, the first eight MVP increments,
-and the separately certified Increment H.1 tag-collection completion.
+This repository contains the local scaffold and the implemented MVP increments
+through private reports and controlled text-only sharing.
 It is not deployed, `odiina.app` is only a suggested placeholder, and no
 tagline or final brand assets have been selected.
 
@@ -42,6 +42,11 @@ tagline or final brand assets have been selected.
 - Bear-style inline hashtag recognition that preserves authored text
 - Nested private tag collections with current active Entry counts
 - Collapsible desktop tag navigation and an accessible mobile Tags route
+- Deterministic private daily, weekly, monthly, yearly and custom recaps
+- Factual metrics, chronological source snapshots and accessible story curation
+- Authenticated private media in stories with no autoplay
+- Print-friendly HTML and privacy-bounded Markdown export
+- Immutable, expiring and immediately revocable text-only share snapshots
 - Calendar recall using explicit occurrence dates
 - Private Profile identity with display name, canonical unique handle and bio
 - Private avatar/banner processing and owner-authorized delivery
@@ -52,9 +57,12 @@ tagline or final brand assets have been selected.
 Increment I adds consent-gated transcription and evidence-linked private
 insights behind a default-off master switch. The repository includes only a
 deterministic loopback test provider; no live AI provider is approved or
-configured, and no OpenAI key is required. Semantic search, sharing, reports,
-provider place search, nearby discovery, maps, projects, charts and
-private-content service-worker caching remain absent.
+configured, and no OpenAI key is required. Increment J adds factual reports
+that remain available with AI disabled and may attach an already authorized
+Increment I insight. Public report links contain curated text only; public
+media delivery, server-rendered PDF, durable scheduled execution, provider
+place search, nearby discovery, maps, social features and private-content
+service-worker caching remain unavailable.
 
 ## Media boundary
 
@@ -126,6 +134,10 @@ Increment I's consent, provider, worker, evidence and deletion boundaries are
 documented in
 [increment-i-private-ai-insights.md](docs/implementation/increment-i-private-ai-insights.md)
 and [private-ai.md](docs/architecture/private-ai.md).
+Increment J's factual engine, source snapshots, exports, share threat model and
+deployment gates are documented in
+[increment-j-private-reports.md](docs/implementation/increment-j-private-reports.md)
+and [private-reports-sharing.md](docs/architecture/private-reports-sharing.md).
 
 ## Local prerequisites
 
@@ -147,7 +159,7 @@ corepack pnpm dev
 ```
 
 `configure:local-env` writes only browser-safe local settings from the running
-stack: the API URL, anon/publishable key, application URL and disabled feature
+stack: the API URL, anon/publishable key, application URL and local feature
 flags. It refuses non-loopback URLs and never writes a service-role credential
 or OpenAI variable. Never commit `.env.local`. Local mail is visible at
 `http://127.0.0.1:54324`. `ada@example.test` is a non-login seed placeholder

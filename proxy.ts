@@ -23,6 +23,7 @@ const protectedPagePrefixes = [
   "/search",
   "/tags",
   "/insights",
+  "/reports",
   "/onboarding",
 ];
 

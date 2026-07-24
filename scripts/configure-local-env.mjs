@@ -32,8 +32,8 @@ ODIINA_FEATURE_VIDEO_UPLOADS=true
 ODIINA_FEATURE_AUDIO_UPLOADS=true
 ODIINA_FEATURE_PLACES=true
 ODIINA_FEATURE_WORKER=true
-ODIINA_FEATURE_SHARING=false
-ODIINA_FEATURE_PERIOD_REPORTS=false
+ODIINA_FEATURE_SHARING=true
+ODIINA_FEATURE_PERIOD_REPORTS=true
 `;
 
 if (
@@ -47,5 +47,5 @@ if (
 
 await writeFile(".env.local", material, { encoding: "utf8", mode: 0o600 });
 console.log(
-  "Wrote browser-safe local settings to ignored .env.local; private media and place capture are enabled.",
+  "Wrote browser-safe local settings to ignored .env.local; private media, places and factual reports are enabled.",
 );

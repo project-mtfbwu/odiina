@@ -23,6 +23,7 @@ const activeItems = [
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/search", label: "Search", icon: SearchIcon },
   { href: "/insights", label: "Insights", icon: InsightsIcon },
+  { href: "/reports", label: "Reports", icon: InsightsIcon },
   { href: "/profile", label: "Profile", icon: ProfileIcon },
   { href: "/trash", label: "Trash", icon: TrashIcon },
   { href: "/settings", label: "Settings", icon: SettingsIcon },

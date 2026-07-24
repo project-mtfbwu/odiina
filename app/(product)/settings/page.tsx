@@ -49,7 +49,9 @@ export default async function SettingsPage() {
           Private image, voice, video and place capture are enabled. Place
           search is unavailable because no production-approved provider is
           configured. AI is separately consent-gated and has no approved live
-          provider. Sharing and period reports remain gated.
+          provider. Factual reports and controlled text-only sharing are
+          available; PDF rendering, shared media and scheduled execution remain
+          deployment-gated.
         </p>
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
           {Object.entries(featureFlags).map(([name, enabled]) => (
@@ -64,6 +66,22 @@ export default async function SettingsPage() {
             </div>
           ))}
         </dl>
+      </section>
+
+      <section
+        className="panel mt-4 p-5 sm:p-7"
+        aria-labelledby="reports-heading"
+      >
+        <h2 id="reports-heading" className="mt-0 text-xl font-bold">
+          Private reports
+        </h2>
+        <p className="leading-7 text-[var(--muted)]">
+          Create no-AI recaps, curate private stories, export Markdown or print
+          HTML, and manage expiring text-only shares.
+        </p>
+        <Link className="button button-secondary" href="/reports">
+          Open Reports
+        </Link>
       </section>
 
       <section className="panel mt-4 p-5 sm:p-7" aria-labelledby="ai-heading">

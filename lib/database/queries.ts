@@ -33,6 +33,17 @@ import {
   searchScope,
   type SearchParameters,
 } from "@/lib/search/parameters";
+import type {
+  ReportDetail,
+  ReportCitation,
+  ReportListItem,
+  ReportMedia,
+  ReportMetric,
+  ReportTag,
+  ReportSection,
+  ReportShare,
+  ReportSource,
+} from "@/lib/reports/types";
 
 export const feedPageSize = 24;
 
@@ -677,4 +688,166 @@ export async function getInsightDetail(
   if (sourceError)
     throw new Error("insight_sources_read_failed", { cause: sourceError });
   return { ...data, sources: sources ?? [] } as InsightDetail;
+}
+
+export async function getReports(filter?: {
+  type?: "daily" | "weekly" | "monthly" | "yearly" | "custom";
+  state?: "draft" | "ready" | "stale" | "shared";
+}): Promise<ReportListItem[]> {
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .schema("app")
+    .from("reports")
+    .select(
+      "id,report_type,period_start,period_end,title,generation_mode,status,created_at,generated_at",
+    )
+    .neq("status", "deleted");
+  if (filter?.type) query = query.eq("report_type", filter.type);
+  if (filter?.state && filter.state !== "shared")
+    query = query.eq("status", filter.state);
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw new Error("reports_read_failed", { cause: error });
+  const reportIds = (data ?? []).map((report) => report.id);
+  if (!reportIds.length) return [];
+  const [shareResult, exportResult] = await Promise.all([
+    supabase
+      .schema("app")
+      .from("report_shares")
+      .select("report_id")
+      .in("report_id", reportIds)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString()),
+    supabase
+      .schema("app")
+      .from("report_exports")
+      .select("report_id")
+      .in("report_id", reportIds)
+      .eq("status", "ready"),
+  ]);
+  const relationshipError = shareResult.error ?? exportResult.error;
+  if (relationshipError)
+    throw new Error("reports_state_read_failed", { cause: relationshipError });
+  const countByReport = (rows: { report_id: string }[]) => {
+    const counts = new Map<string, number>();
+    for (const row of rows)
+      counts.set(row.report_id, (counts.get(row.report_id) ?? 0) + 1);
+    return counts;
+  };
+  const shares = countByReport(shareResult.data ?? []);
+  const exports = countByReport(exportResult.data ?? []);
+  const reports = (data ?? []).map((report) => ({
+    ...report,
+    active_share_count: shares.get(report.id) ?? 0,
+    export_count: exports.get(report.id) ?? 0,
+  })) as ReportListItem[];
+  return filter?.state === "shared"
+    ? reports.filter((report) => report.active_share_count > 0)
+    : reports;
+}
+
+export async function getReportDetail(reportId: string): Promise<ReportDetail> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .schema("app")
+    .from("reports")
+    .select(
+      "id,report_type,period_start,period_end,period_timezone,week_starts_on,title,introduction,closing_reflection,generation_mode,insight_id,status,created_at,generated_at",
+    )
+    .eq("id", reportId)
+    .neq("status", "deleted")
+    .maybeSingle();
+  if (error) throw new Error("report_read_failed", { cause: error });
+  if (!data) notFound();
+  const [
+    sectionResult,
+    metricResult,
+    tagResult,
+    sourceResult,
+    mediaResult,
+    shareResult,
+    citationResult,
+  ] = await Promise.all([
+    supabase
+      .schema("app")
+      .from("report_sections")
+      .select("id,section_kind,position,visible,heading,origin,generated_text")
+      .eq("report_id", reportId)
+      .order("position"),
+    supabase
+      .schema("app")
+      .from("report_metrics")
+      .select("metric_key,metric_value")
+      .eq("report_id", reportId)
+      .order("metric_key"),
+    supabase
+      .schema("app")
+      .from("report_tags")
+      .select("normalized_name,display_name,entry_count")
+      .eq("report_id", reportId)
+      .order("entry_count", { ascending: false })
+      .order("normalized_name"),
+    supabase
+      .schema("app")
+      .from("report_sources")
+      .select(
+        "source_position,entry_id,revision_id,occurred_at,occurred_local_date,body_excerpt,place_label,edited,selected,source_unavailable",
+      )
+      .eq("report_id", reportId)
+      .order("source_position"),
+    supabase
+      .schema("app")
+      .from("report_media_selections")
+      .select(
+        "id,entry_id,revision_id,attachment_id,media_kind,presentation_role,position,selected",
+      )
+      .eq("report_id", reportId)
+      .order("position"),
+    supabase
+      .schema("app")
+      .from("report_shares")
+      .select(
+        "id,token_prefix,expires_at,created_at,revoked_at,manifest_version,include_places",
+      )
+      .eq("report_id", reportId)
+      .order("created_at", { ascending: false }),
+    data.insight_id
+      ? supabase
+          .schema("app")
+          .from("insight_sources")
+          .select(
+            "id,entry_id,revision_id,occurred_local_date,evidence_excerpt,start_ms,end_ms",
+          )
+          .eq("insight_id", data.insight_id)
+          .order("source_position")
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const firstError = [
+    sectionResult.error,
+    metricResult.error,
+    tagResult.error,
+    sourceResult.error,
+    mediaResult.error,
+    shareResult.error,
+    citationResult.error,
+  ].find(Boolean);
+  if (firstError)
+    throw new Error("report_relationships_read_failed", { cause: firstError });
+  return {
+    ...data,
+    sections: (sectionResult.data ?? []) as ReportSection[],
+    metrics: (metricResult.data ?? []).map((metric) => ({
+      ...metric,
+      metric_value: Number(metric.metric_value),
+    })) as ReportMetric[],
+    tags: (tagResult.data ?? []).map((tag) => ({
+      ...tag,
+      entry_count: Number(tag.entry_count),
+    })) as ReportTag[],
+    sources: (sourceResult.data ?? []) as ReportSource[],
+    media: (mediaResult.data ?? []) as ReportMedia[],
+    shares: (shareResult.data ?? []) as ReportShare[],
+    citations: (citationResult.data ?? []) as ReportCitation[],
+  } as ReportDetail;
 }

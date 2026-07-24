@@ -72,3 +72,15 @@ policy, subprocessors, deletion behavior, pricing, rate limits and outage
 handling. Production also needs a durable worker runtime. Until both reviews
 are complete, server routes fail closed and the UI states that nothing was
 sent.
+
+## Report integration
+
+Increment J does not create a second provider, prompt or worker pipeline.
+Factual reports are deterministic and consume no AI quota. An AI-enhanced
+report can attach only an existing ready Increment I insight whose civil range
+exactly matches the report. The insight retains its provider/model metadata,
+source snapshot and validated citations; the report keeps user-authored title,
+introduction and reflection separate. Stale or deleted insight state marks the
+derived report stale, and deleting AI-derived data revokes shares that copied
+that narrative. Turning the master switch off never disables factual report
+creation.
